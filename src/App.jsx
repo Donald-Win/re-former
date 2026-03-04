@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, FileText, CheckCircle2, Circle, ExternalLink, Download, ChevronDown, ChevronUp, List, Briefcase, X, Printer, Share2, PenLine } from 'lucide-react';
+import { Search, FileText, CheckCircle2, Circle, ExternalLink, Download, ChevronDown, ChevronUp, List, Briefcase, X, Share2, PenLine } from 'lucide-react';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
 // Version number - update this when releasing new version
@@ -676,39 +676,21 @@ const AsBuiltFormSelector = () => {
     setCurrentPdfName('');
   };
 
-  const handlePrint = () => {
-    const iframe = document.getElementById('pdf-iframe');
-    if (iframe && iframe.contentWindow) {
-      iframe.contentWindow.print();
-    }
-  };
-
   const handleShare = async () => {
-    if (navigator.share && navigator.canShare) {
-      try {
-        // Fetch the PDF as a blob
-        const response = await fetch(currentPdfUrl);
-        const blob = await response.blob();
-        const file = new File([blob], currentPdfName, { type: 'application/pdf' });
-        
-        // Check if we can share files
-        if (navigator.canShare({ files: [file] })) {
-          await navigator.share({
-            files: [file],
-            title: currentPdfName
-          });
-          // Share successful - stay in modal, don't close
-        } else {
-          // Can't share files, share URL instead
-          await navigator.share({
-            title: currentPdfName,
-            url: currentPdfUrl
-          });
-        }
-      } catch (error) {
-        // User cancelled or error - do nothing, stay in modal
-        console.log('Share cancelled or failed');
+    try {
+      const response = await fetch(currentPdfUrl);
+      const blob = await response.blob();
+      const file = new File([blob], currentPdfName, { type: 'application/pdf' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: currentPdfName });
+      } else if (navigator.share) {
+        await navigator.share({ title: currentPdfName, url: currentPdfUrl });
+      } else {
+        const a = document.createElement('a');
+        a.href = currentPdfUrl; a.download = currentPdfName; a.click();
       }
+    } catch (error) {
+      console.log('Share cancelled or failed');
     }
   };
 
@@ -1202,40 +1184,24 @@ const AsBuiltFormSelector = () => {
       {pdfViewerOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex flex-col">
           {/* Header Bar */}
-          <div className="bg-white shadow-lg p-4 flex items-center justify-between">
+          <div className="bg-white shadow-lg px-4 py-3 flex items-center justify-between flex-shrink-0">
             <div className="flex items-center gap-3 flex-1 min-w-0">
-              <FileText className="text-indigo-600 flex-shrink-0" size={24} />
-              <h2 className="font-semibold text-gray-900 truncate text-sm md:text-base">
+              <FileText className="text-indigo-600 flex-shrink-0" size={22} />
+              <h2 className="font-semibold text-gray-900 truncate text-sm">
                 {currentPdfName}
               </h2>
             </div>
-            
-            {/* Action Buttons */}
-            <div className="flex items-center gap-2 ml-4">
-              {/* Share Button (iOS/Android) */}
-              {navigator.share && (
-                <button
-                  onClick={handleShare}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                  title="Share"
-                >
-                  <Share2 size={20} className="text-gray-700" />
-                </button>
-              )}
-              
-              {/* Print Button */}
+            <div className="flex items-center gap-2 ml-3 flex-shrink-0">
               <button
-                onClick={handlePrint}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                title="Print"
+                onClick={handleShare}
+                className="flex items-center gap-2 px-3 py-2 bg-indigo-600 text-white text-sm font-bold rounded-lg hover:bg-indigo-700 active:bg-indigo-800 transition-colors"
               >
-                <Printer size={20} className="text-gray-700" />
+                <Share2 size={15} />
+                Print / Save / Share
               </button>
-              
-              {/* Close Button */}
               <button
                 onClick={handleClosePdf}
-                className="p-2 hover:bg-red-100 rounded-lg transition-colors ml-2"
+                className="p-2 hover:bg-red-50 rounded-lg transition-colors"
                 title="Close"
               >
                 <X size={24} className="text-red-600" />
@@ -1251,26 +1217,6 @@ const AsBuiltFormSelector = () => {
               className="w-full h-full border-0"
               title={currentPdfName}
             />
-          </div>
-
-          {/* Bottom Action Bar (Mobile) */}
-          <div className="md:hidden bg-white shadow-lg p-3 flex justify-around">
-            {navigator.share && (
-              <button
-                onClick={handleShare}
-                className="flex flex-col items-center gap-1 px-4 py-2 text-indigo-600"
-              >
-                <Share2 size={20} />
-                <span className="text-xs">Share</span>
-              </button>
-            )}
-            <button
-              onClick={handlePrint}
-              className="flex flex-col items-center gap-1 px-4 py-2 text-indigo-600"
-            >
-              <Printer size={20} />
-              <span className="text-xs">Print</span>
-            </button>
           </div>
         </div>
       )}
