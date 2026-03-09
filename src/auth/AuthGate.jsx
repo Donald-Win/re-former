@@ -171,14 +171,15 @@ export function AuthGate({ children }) {
     const cached = getCachedResult()
 
     if (navigator.onLine) {
-      // Online: check network. Show cached result immediately if available
-      // so there's no flash of loading screen on repeat visits.
-      if (cached !== null) {
-        setStatus(cached.allowed ? 'allowed' : 'denied')
-        if (cached.allowed) startPolling()
+      // Online: always do a live check first.
+      // Only pre-show 'allowed' from cache — never pre-show 'denied'
+      // as a stale failed check would lock out a user who has since been granted access.
+      if (cached !== null && cached.allowed) {
+        setStatus('allowed')
+        startPolling()
       }
 
-      // Then verify fresh in background (or foreground if no cache)
+      // Live check — always runs, always overrides cache result
       checkAccessOnline()
         .then(result => {
           setStatus(result.allowed ? 'allowed' : 'denied')
@@ -186,6 +187,13 @@ export function AuthGate({ children }) {
             startPolling()
           } else {
             stopPolling()
+          }
+        })
+        .catch(() => {
+          // Network error — keep allowed if already shown from cache, else fail open
+          if (cached === null || !cached.allowed) {
+            console.warn('[re-former auth] No valid cache and network failed — failing open')
+            setStatus('allowed')
           }
         })
         .catch(() => {
