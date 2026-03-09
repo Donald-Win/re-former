@@ -1,8 +1,7 @@
-// re-former Service Worker
-// Bump CACHE_VERSION whenever deploying a new build.
-const CACHE_VERSION = 're-former-v2.6.1'
-const STATIC_CACHE = `${CACHE_VERSION}-static`
-const PDF_CACHE    = `${CACHE_VERSION}-pdfs`
+// re-former Service Worker v2.7.0
+const CACHE_VERSION = 're-former-v2.7.0'
+const STATIC_CACHE  = CACHE_VERSION + '-static'
+const PDF_CACHE     = CACHE_VERSION + '-pdfs'
 
 const STATIC_ASSETS = [
   './',
@@ -10,7 +9,6 @@ const STATIC_ASSETS = [
   './manifest.json',
 ]
 
-// ── Install ────────────────────────────────────────────────────────────────
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(STATIC_CACHE)
@@ -19,25 +17,36 @@ self.addEventListener('install', event => {
   )
 })
 
-// ── Activate — purge old caches ────────────────────────────────────────────
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(
-        keys
-          .filter(k => k !== STATIC_CACHE && k !== PDF_CACHE)
-          .map(k => caches.delete(k))
-      )
-    ).then(() => self.clients.claim())
+    caches.keys()
+      .then(keys => Promise.all(
+        keys.filter(k => k !== STATIC_CACHE && k !== PDF_CACHE)
+            .map(k => caches.delete(k))
+      ))
+      .then(() => self.clients.claim())
   )
 })
 
-// ── Fetch ──────────────────────────────────────────────────────────────────
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url)
 
-  // PDFs — network-first so technicians always get the latest version,
-  // fall back to cache when offline.
+  // manifest.json — always network-first so Chrome always sees the latest
+  // version for PWA installability checks. Fall back to cache if offline.
+  if (url.pathname.endsWith('/manifest.json')) {
+    event.respondWith(
+      fetch(event.request, { cache: 'no-store' })
+        .then(response => {
+          const clone = response.clone()
+          caches.open(STATIC_CACHE).then(cache => cache.put(event.request, clone))
+          return response
+        })
+        .catch(() => caches.match(event.request))
+    )
+    return
+  }
+
+  // PDFs — network-first, fall back to cache when offline
   if (/\/forms\/.*\.pdf$/.test(url.pathname)) {
     event.respondWith(
       fetch(event.request)
@@ -51,7 +60,7 @@ self.addEventListener('fetch', event => {
     return
   }
 
-  // Everything else — stale-while-revalidate.
+  // Everything else — stale-while-revalidate
   event.respondWith(
     caches.open(STATIC_CACHE).then(cache =>
       cache.match(event.request).then(cached => {
@@ -65,10 +74,7 @@ self.addEventListener('fetch', event => {
   )
 })
 
-// ── Messages from app ──────────────────────────────────────────────────────
 self.addEventListener('message', event => {
   if (event.data === 'SKIP_WAITING') self.skipWaiting()
-  if (event.data === 'CHECK_UPDATE') {
-    self.registration.update()
-  }
+  if (event.data === 'CHECK_UPDATE') self.registration.update()
 })

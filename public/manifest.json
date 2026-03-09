@@ -1,4 +1,5 @@
 {
+  "id": "/re-former/",
   "name": "re-former — Powerco AS-Built Forms",
   "short_name": "re-former",
   "description": "Powerco field technician form finder and wizard",
@@ -35,4 +36,3 @@
     }
   ]
 }
-

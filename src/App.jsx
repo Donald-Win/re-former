@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Search, FileText, CheckCircle2, Circle, ExternalLink, Download,
-  ChevronDown, ChevronUp, List, Briefcase, X, Share2, PenLine } from 'lucide-react'
+  ChevronDown, ChevronUp, List, Briefcase, X, Share2, PenLine, Printer } from 'lucide-react'
 
 import PoleRecordWizard from './wizards/PoleWizard'
 import TransformerWizardApp from './wizards/TransformerWizard'
@@ -10,7 +10,7 @@ import ElecDistributionWizard from './wizards/ElecDistributionWizard'
 import LvBoxWizard from './wizards/LvBoxWizard'
 import { AuthGate } from './auth/AuthGate'
 
-const APP_VERSION = '2.6.0'
+const APP_VERSION = '2.7.0'
 
 const AsBuiltFormSelector = () => {
   const [selectedWork, setSelectedWork] = useState('');
