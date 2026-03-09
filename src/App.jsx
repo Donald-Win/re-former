@@ -35,16 +35,20 @@ const AsBuiltFormSelector = () => {
   const [installPrompt, setInstallPrompt] = useState(null);
   const [installDismissed, setInstallDismissed] = useState(false);
 
-  // Capture the beforeinstallprompt event so we can trigger it from a button
+  // Pick up the install prompt captured in main.jsx before React mounted.
+  // Also listen for pwaPromptReady in case React mounted first (rare but possible).
   useEffect(() => {
-    const handler = (e) => {
-      e.preventDefault()
-      setInstallPrompt(e)
+    if (window.__pwaInstallPrompt) {
+      setInstallPrompt(window.__pwaInstallPrompt)
     }
-    window.addEventListener('beforeinstallprompt', handler)
-    // Hide button once app is installed
-    window.addEventListener('appinstalled', () => setInstallPrompt(null))
-    return () => window.removeEventListener('beforeinstallprompt', handler)
+    const onReady = () => setInstallPrompt(window.__pwaInstallPrompt)
+    const onInstalled = () => setInstallPrompt(null)
+    window.addEventListener('pwaPromptReady', onReady)
+    window.addEventListener('pwaInstalled', onInstalled)
+    return () => {
+      window.removeEventListener('pwaPromptReady', onReady)
+      window.removeEventListener('pwaInstalled', onInstalled)
+    }
   }, [])
 
   const handleInstall = async () => {
