@@ -1,172 +1,232 @@
 /**
- * re-former Auth Module
- * ─────────────────────────────────────────────────────────────────────────────
- * Handles device identity, Cloudflare Worker calls, caching, polling, and
- * event-driven revocation detection.
+ * AuthGate — wraps the entire app and controls access.
  *
- * Usage (see AuthGate.jsx for the React integration):
- *   import { getDeviceId, checkAccessOnline, ... } from './auth'
+ * Drop into App.jsx:
+ *   import { AuthGate } from './auth/AuthGate'
+ *   // then wrap your return:
+ *   return <AuthGate> ... rest of app JSX ... </AuthGate>
  */
 
-// ── CONFIG ────────────────────────────────────────────────────────────────────
-// Replace with your actual Cloudflare Worker URL after deployment.
-export const WORKER_URL = 'https://re-former-auth.YOUR_SUBDOMAIN.workers.dev'
-
-// Identifies this app to the Worker. Must match a key in APP_COLUMN_MAP.
-export const APP_ID = 'reformer'
-
-const DEVICE_ID_KEY  = 'dcw-device-id'
-const AUTH_CACHE_KEY = 're-former-auth-cache'
-const POLL_MS        = 45_000   // 45 seconds — ~1,920 req/day per user, well under free 100k limit
-
-// ── DEVICE ID ─────────────────────────────────────────────────────────────────
-// Uses crypto.randomUUID() for a truly stable, unpredictable device identity.
-// Stored in localStorage so it survives app restarts but is unique per device/browser.
-// Format: DCW-XXXX-XXXX-XXXX
-
-function generateDeviceId() {
-  const uuid = crypto.randomUUID().replace(/-/g, '').toUpperCase()
-  return `DCW-${uuid.slice(0, 4)}-${uuid.slice(4, 8)}-${uuid.slice(8, 12)}`
-}
-
-export function getDeviceId() {
-  let id = localStorage.getItem(DEVICE_ID_KEY)
-  if (!id || !/^DCW-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}$/.test(id)) {
-    id = generateDeviceId()
-    localStorage.setItem(DEVICE_ID_KEY, id)
-    console.log('[re-former auth] Generated new device ID:', id)
-  }
-  return id
-}
-
-// ── CACHE ─────────────────────────────────────────────────────────────────────
-
-function cacheResult(result) {
-  try {
-    localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify({
-      ...result,
-      cachedAt: Date.now(),
-    }))
-  } catch { /* storage full — not critical */ }
-}
-
-export function getCachedResult() {
-  try {
-    const raw = localStorage.getItem(AUTH_CACHE_KEY)
-    return raw ? JSON.parse(raw) : null
-  } catch {
-    return null
-  }
-}
-
-// ── NETWORK CHECK ─────────────────────────────────────────────────────────────
-
-export async function checkAccessOnline() {
-  const deviceId = getDeviceId()
-  const res = await fetch(WORKER_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ deviceId, app: APP_ID }),
-    // Ensure this is never served from HTTP cache
-    cache: 'no-store',
-  })
-  if (!res.ok) throw new Error(`Worker responded ${res.status}`)
-  const result = await res.json()
-  cacheResult(result)
-  return result
-}
-
-// ── POLLING & EVENT LISTENERS ─────────────────────────────────────────────────
-// A single module-level callback is set by AuthGate and shared across
-// polling, online events, and visibility events.
-
-let _onRevoked        = null
-let _pollTimer        = null
-let _listeningOnline  = false
-let _listeningVisible = false
-
-export function setRevokedCallback(fn) {
-  _onRevoked = fn
-}
-
-export function startPolling() {
-  stopPolling()
-  _pollTimer = setInterval(async () => {
-    if (!navigator.onLine || !_onRevoked) return
-    try {
-      const result = await checkAccessOnline()
-      if (!result.allowed) {
-        stopPolling()
-        _onRevoked(getDeviceId())
-      }
-    } catch {
-      // Network hiccup — don't penalise user, just try next interval
-    }
-  }, POLL_MS)
-}
-
-export function stopPolling() {
-  if (_pollTimer) {
-    clearInterval(_pollTimer)
-    _pollTimer = null
-  }
-}
-
-/**
- * Re-checks immediately when the browser tab comes back into view.
- * This catches revocations that happened while the tab was backgrounded.
- */
-export function addVisibilityListener() {
-  if (_listeningVisible) return
-  _listeningVisible = true
-  document.addEventListener('visibilitychange', async () => {
-    if (document.visibilityState !== 'visible') return
-    if (!navigator.onLine || !_onRevoked) return
-    try {
-      const result = await checkAccessOnline()
-      if (!result.allowed) {
-        stopPolling()
-        _onRevoked(getDeviceId())
-      }
-    } catch { /* network error — ignore */ }
-  })
-}
-
-/**
- * Re-checks immediately when the device regains a network connection.
- * This is how offline→online transitions are handled.
- */
-export function addOnlineListener() {
-  if (_listeningOnline) return
-  _listeningOnline = true
-  window.addEventListener('online', async () => {
-    if (!_onRevoked) return
-    try {
-      const result = await checkAccessOnline()
-      if (result.allowed) {
-        // Still allowed — kick off polling now that we have a connection
-        startPolling()
-      } else {
-        stopPolling()
-        _onRevoked(getDeviceId())
-      }
-    } catch { /* network error — ignore */ }
-  })
-}
-
-// ── DEBUG HELPERS (available in browser console) ─────────────────────────────
-
-window.__reformerAuth = {
+import React, { useState, useEffect } from 'react'
+import {
   getDeviceId,
   getCachedResult,
   checkAccessOnline,
-  clearCache: () => {
-    localStorage.removeItem(AUTH_CACHE_KEY)
-    console.log('[re-former auth] Cache cleared. Reload to re-check.')
-  },
-  resetDeviceId: () => {
-    localStorage.removeItem(DEVICE_ID_KEY)
-    localStorage.removeItem(AUTH_CACHE_KEY)
-    console.log('[re-former auth] Device ID and cache cleared. Reload to generate new ID.')
-  },
+  setRevokedCallback,
+  startPolling,
+  stopPolling,
+  addVisibilityListener,
+  addOnlineListener,
+} from './auth'
+
+// ── LOCK SCREEN ───────────────────────────────────────────────────────────────
+
+function LockScreen({ deviceId }) {
+  const subject = encodeURIComponent('re-former Access Request')
+  const body = encodeURIComponent(
+    `Hi Donald,\n\nPlease grant me access to re-former.\n\nMy Device ID is: ${deviceId}\n\nThanks.`
+  )
+  const mailtoHref = `mailto:donald.c.win@gmail.com?subject=${subject}&body=${body}`
+
+  return (
+    <div style={{
+      minHeight: '100dvh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '1.5rem',
+      background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      boxSizing: 'border-box',
+    }}>
+      <div style={{
+        background: 'white',
+        borderRadius: 24,
+        padding: '2.5rem 2rem',
+        maxWidth: 420,
+        width: '100%',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.35)',
+        textAlign: 'center',
+      }}>
+        <div style={{ fontSize: '3.5rem', marginBottom: '1rem' }}>🔐</div>
+
+        <h1 style={{
+          fontSize: '1.6rem', fontWeight: 900, color: '#111827',
+          margin: '0 0 0.75rem',
+        }}>
+          Access Restricted
+        </h1>
+
+        <p style={{
+          color: '#6b7280', lineHeight: 1.6,
+          margin: '0 0 1.75rem', fontSize: '0.95rem',
+        }}>
+          Your device isn't authorised to use re&#8209;former.
+          Send your Device ID to Donald to request access.
+        </p>
+
+        {/* Device ID display */}
+        <div style={{
+          background: '#f3f4f6', borderRadius: 14,
+          padding: '1.25rem', marginBottom: '1.5rem',
+        }}>
+          <div style={{
+            fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
+            letterSpacing: '0.1em', color: '#9ca3af', marginBottom: 8,
+          }}>
+            Your Device ID
+          </div>
+          <div style={{
+            fontSize: '1.3rem', fontWeight: 900, fontFamily: 'monospace',
+            letterSpacing: '0.08em', color: '#111827',
+            background: 'white', borderRadius: 10, padding: '0.75rem',
+            border: '2px solid #e5e7eb',
+            // Allow user to tap-to-select and copy
+            userSelect: 'all', WebkitUserSelect: 'all', cursor: 'text',
+          }}>
+            {deviceId}
+          </div>
+          <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 8 }}>
+            Tap the ID above to select it, then copy
+          </div>
+        </div>
+
+        {/* Email button */}
+        <a
+          href={mailtoHref}
+          style={{
+            display: 'block', background: '#4f46e5', color: 'white',
+            textDecoration: 'none', borderRadius: 12,
+            padding: '0.875rem 1rem', fontWeight: 700, fontSize: '0.95rem',
+            marginBottom: '0.75rem', boxSizing: 'border-box',
+          }}
+        >
+          ✉️ Email Access Request
+        </a>
+
+        {/* Retry button */}
+        <button
+          onClick={() => window.location.reload()}
+          style={{
+            width: '100%', background: 'transparent',
+            border: '2px solid #e5e7eb', borderRadius: 12,
+            padding: '0.75rem', color: '#6b7280',
+            fontWeight: 600, cursor: 'pointer', fontSize: '0.875rem',
+            boxSizing: 'border-box',
+          }}
+        >
+          Check Again
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── LOADING SCREEN ────────────────────────────────────────────────────────────
+
+function LoadingScreen() {
+  return (
+    <div style={{
+      minHeight: '100dvh', display: 'flex',
+      alignItems: 'center', justifyContent: 'center',
+      background: '#f4f4f8',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    }}>
+      <div style={{ textAlign: 'center', color: '#9ca3af' }}>
+        <div style={{ fontSize: 36, marginBottom: 12 }}>⚙️</div>
+        <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>Checking access…</div>
+      </div>
+    </div>
+  )
+}
+
+// ── AUTH GATE ─────────────────────────────────────────────────────────────────
+
+export function AuthGate({ children }) {
+  // 'loading' → checking
+  // 'allowed' → show app
+  // 'denied'  → show lock screen
+  const [status, setStatus]   = useState('loading')
+  const [deviceId, setDeviceId] = useState('')
+
+  useEffect(() => {
+    const id = getDeviceId()
+    setDeviceId(id)
+
+    // Callback that polling/event listeners call when access is revoked
+    const handleRevoked = (revokedId) => {
+      console.warn('[re-former auth] Access revoked — showing lock screen')
+      setDeviceId(revokedId)
+      setStatus('denied')
+    }
+
+    setRevokedCallback(handleRevoked)
+
+    // Always register listeners — they'll fire at the right time
+    addVisibilityListener()
+    addOnlineListener()
+
+    // ── Check logic ─────────────────────────────────────────────────────────
+
+    const cached = getCachedResult()
+
+    if (navigator.onLine) {
+      // Online: always do a live check first.
+      // Only pre-show 'allowed' from cache — never pre-show 'denied'
+      // as a stale failed check would lock out a user who has since been granted access.
+      if (cached !== null && cached.allowed) {
+        setStatus('allowed')
+        startPolling()
+      }
+
+      // Live check — always runs, always overrides cache result
+      checkAccessOnline()
+        .then(result => {
+          setStatus(result.allowed ? 'allowed' : 'denied')
+          if (result.allowed) {
+            startPolling()
+          } else {
+            stopPolling()
+          }
+        })
+        .catch(() => {
+          // Network error — keep allowed if already shown from cache, else fail open
+          if (cached === null || !cached.allowed) {
+            console.warn('[re-former auth] No valid cache and network failed — failing open')
+            setStatus('allowed')
+          }
+        })
+        .catch(() => {
+          // Network error during check — trust cache if available, else fail open
+          if (cached !== null) {
+            setStatus(cached.allowed ? 'allowed' : 'denied')
+            if (cached.allowed) startPolling()
+          } else {
+            console.warn('[re-former auth] No cache and network failed — failing open')
+            setStatus('allowed')
+          }
+        })
+    } else {
+      // Offline: use cached result only
+      if (cached !== null) {
+        console.log('[re-former auth] Offline — using cached result:', cached.allowed ? 'allowed' : 'denied')
+        setStatus(cached.allowed ? 'allowed' : 'denied')
+      } else {
+        // No cache at all (fresh install with no connection) — fail open
+        console.warn('[re-former auth] Offline with no cache — failing open')
+        setStatus('allowed')
+      }
+      // addOnlineListener() above will re-check as soon as connectivity returns
+    }
+
+    return () => {
+      // Clean up polling when component unmounts (shouldn't normally happen in a PWA
+      // since AuthGate wraps the whole app, but good practice)
+      stopPolling()
+    }
+  }, [])
+
+  if (status === 'loading') return <LoadingScreen />
+  if (status === 'denied')  return <LockScreen deviceId={deviceId} />
+  return children
 }
