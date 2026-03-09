@@ -3,7 +3,6 @@
  *
  * Drop into App.jsx:
  *   import { AuthGate } from './auth/AuthGate'
- *   // then wrap your return:
  *   return <AuthGate> ... rest of app JSX ... </AuthGate>
  */
 
@@ -81,7 +80,6 @@ function LockScreen({ deviceId }) {
             letterSpacing: '0.08em', color: '#111827',
             background: 'white', borderRadius: 10, padding: '0.75rem',
             border: '2px solid #e5e7eb',
-            // Allow user to tap-to-select and copy
             userSelect: 'all', WebkitUserSelect: 'all', cursor: 'text',
           }}>
             {deviceId}
@@ -143,43 +141,36 @@ function LoadingScreen() {
 // ── AUTH GATE ─────────────────────────────────────────────────────────────────
 
 export function AuthGate({ children }) {
-  // 'loading' → checking
-  // 'allowed' → show app
-  // 'denied'  → show lock screen
-  const [status, setStatus]   = useState('loading')
+  const [status, setStatus]     = useState('loading')
   const [deviceId, setDeviceId] = useState('')
 
   useEffect(() => {
     const id = getDeviceId()
     setDeviceId(id)
 
-    // Callback that polling/event listeners call when access is revoked
-    const handleRevoked = (revokedId) => {
+    // Called by polling and event listeners when access is revoked mid-session
+    setRevokedCallback((revokedId) => {
       console.warn('[re-former auth] Access revoked — showing lock screen')
       setDeviceId(revokedId)
       setStatus('denied')
-    }
+    })
 
-    setRevokedCallback(handleRevoked)
-
-    // Always register listeners — they'll fire at the right time
     addVisibilityListener()
     addOnlineListener()
-
-    // ── Check logic ─────────────────────────────────────────────────────────
 
     const cached = getCachedResult()
 
     if (navigator.onLine) {
-      // Online: show cached result immediately (only if allowed) to avoid
-      // a flash of the loading screen on repeat visits, then always
-      // verify fresh. Denied is never cached so can never block a legitimate user.
+      // Show cached result immediately while live check runs.
+      // This avoids a loading flash on repeat visits.
+      // Both allowed and denied are shown from cache immediately —
+      // the live check below always runs and will correct any stale result.
       if (cached !== null) {
         setStatus(cached.allowed ? 'allowed' : 'denied')
         if (cached.allowed) startPolling()
       }
 
-      // Live check — always runs regardless of cache
+      // Live check — always runs, result always overrides cache
       checkAccessOnline()
         .then(result => {
           setStatus(result.allowed ? 'allowed' : 'denied')
@@ -190,50 +181,28 @@ export function AuthGate({ children }) {
           }
         })
         .catch(() => {
-          // Network error — trust cache if available, else fail open
-          if (cached !== null) {
-            setStatus(cached.allowed ? 'allowed' : 'denied')
-            if (cached.allowed) startPolling()
-          } else {
+          // Network error — keep whatever the cache said, or fail open if no cache
+          if (cached === null) {
             console.warn('[re-former auth] No cache and network failed — failing open')
             setStatus('allowed')
           }
+          // If cache was already shown, leave it as-is (correct offline behaviour)
         })
-        .catch(() => {
-          // Network error — keep allowed if already shown from cache, else fail open
-          if (cached === null || !cached.allowed) {
-            console.warn('[re-former auth] No valid cache and network failed — failing open')
-            setStatus('allowed')
-          }
-        })
-        .catch(() => {
-          // Network error during check — trust cache if available, else fail open
-          if (cached !== null) {
-            setStatus(cached.allowed ? 'allowed' : 'denied')
-            if (cached.allowed) startPolling()
-          } else {
-            console.warn('[re-former auth] No cache and network failed — failing open')
-            setStatus('allowed')
-          }
-        })
+
     } else {
-      // Offline: use cached result only
+      // Offline — use cache only
       if (cached !== null) {
         console.log('[re-former auth] Offline — using cached result:', cached.allowed ? 'allowed' : 'denied')
         setStatus(cached.allowed ? 'allowed' : 'denied')
       } else {
-        // No cache at all (fresh install with no connection) — fail open
+        // No cache, no network (fresh install offline) — fail open
         console.warn('[re-former auth] Offline with no cache — failing open')
         setStatus('allowed')
       }
-      // addOnlineListener() above will re-check as soon as connectivity returns
+      // addOnlineListener() will re-check as soon as connectivity returns
     }
 
-    return () => {
-      // Clean up polling when component unmounts (shouldn't normally happen in a PWA
-      // since AuthGate wraps the whole app, but good practice)
-      stopPolling()
-    }
+    return () => { stopPolling() }
   }, [])
 
   if (status === 'loading') return <LoadingScreen />
