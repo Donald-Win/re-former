@@ -12,7 +12,7 @@ import { AuthGate } from './auth/AuthGate'
 import { CHANGELOGS } from './changelog'
 import { PdfCanvasPreview } from './shared/PdfCanvasPreview'
 
-const APP_VERSION = '2.8.0'
+const APP_VERSION = '2.9.0'
 
 const AsBuiltFormSelector = () => {
   const [selectedWork, setSelectedWork] = useState('');
@@ -238,7 +238,8 @@ const AsBuiltFormSelector = () => {
     if (formId === '360S014ED') { setEdChoiceOpen(true);   return; }
 
     // All platforms: fetch as arrayBuffer, render via PdfCanvasPreview, share as File
-    const displayName = name || url.split('/').pop();
+    const rawName = name || url.split('/').pop();
+    const displayName = rawName.endsWith('.pdf') ? rawName : rawName + '.pdf';
     setCurrentPdfUrl(url);
     setCurrentPdfName(displayName);
     setPdfBytes(null);
