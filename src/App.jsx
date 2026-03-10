@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Search, FileText, CheckCircle2, Circle, ExternalLink, Download,
-  ChevronDown, ChevronUp, List, Briefcase, X, Share2, PenLine, Printer } from 'lucide-react'
+  ChevronDown, ChevronUp, List, Briefcase, X, Share2, PenLine } from 'lucide-react'
 
 import PoleRecordWizard from './wizards/PoleWizard'
 import TransformerWizardApp from './wizards/TransformerWizard'
@@ -9,6 +9,7 @@ import LvConnectionWizard from './wizards/LvConnectionWizard'
 import ElecDistributionWizard from './wizards/ElecDistributionWizard'
 import LvBoxWizard from './wizards/LvBoxWizard'
 import { AuthGate } from './auth/AuthGate'
+import { CHANGELOG_VERSION, CHANGELOG } from './changelog'
 
 const APP_VERSION = '2.7.0'
 
@@ -35,6 +36,7 @@ const AsBuiltFormSelector = () => {
   const [edWizardOpen, setEdWizardOpen] = useState(false);
   const [installPrompt, setInstallPrompt] = useState(null);
   const [installDismissed, setInstallDismissed] = useState(false);
+  const [showChangelog, setShowChangelog] = useState(false);
 
   // Pick up the install prompt captured in main.jsx before React mounted.
   // Also listen for pwaPromptReady in case React mounted first (rare but possible).
@@ -51,6 +53,19 @@ const AsBuiltFormSelector = () => {
       window.removeEventListener('pwaInstalled', onInstalled)
     }
   }, [])
+
+  // Show changelog modal once per CHANGELOG_VERSION
+  useEffect(() => {
+    const seen = localStorage.getItem('re-former-changelog-seen')
+    if (seen !== CHANGELOG_VERSION) {
+      setShowChangelog(true)
+    }
+  }, [])
+
+  const dismissChangelog = () => {
+    localStorage.setItem('re-former-changelog-seen', CHANGELOG_VERSION)
+    setShowChangelog(false)
+  }
 
   const handleInstall = async () => {
     if (!installPrompt) return
@@ -1237,7 +1252,60 @@ const AsBuiltFormSelector = () => {
       {/* LV Box Record Wizard overlay */}
       {edWizardOpen && <LvBoxWizard onClose={()=>setEdWizardOpen(false)} />}
 
-            {/* Install App Button */}
+            {/* Changelog Modal */}
+      {showChangelog && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 2000,
+          background: 'rgba(0,0,0,0.6)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: '1.5rem',
+        }}>
+          <div style={{
+            background: 'white', borderRadius: 20,
+            padding: '2rem', maxWidth: 480, width: '100%',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+            maxHeight: '80dvh', overflowY: 'auto',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
+              <h2 style={{ fontWeight: 900, fontSize: '1.25rem', color: '#111827', margin: 0 }}>
+                What's New
+              </h2>
+              <span style={{ fontSize: 11, color: '#9ca3af', fontWeight: 600 }}>
+                v{CHANGELOG_VERSION}
+              </span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
+              {CHANGELOG.map((item, i) => (
+                <div key={i} style={{
+                  borderLeft: '3px solid #4f46e5',
+                  paddingLeft: '0.875rem',
+                }}>
+                  <div style={{ fontWeight: 700, color: '#1f2937', marginBottom: 3, fontSize: '0.95rem' }}>
+                    {item.heading}
+                  </div>
+                  {item.detail && (
+                    <div style={{ fontSize: '0.85rem', color: '#6b7280', lineHeight: 1.5 }}>
+                      {item.detail}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={dismissChangelog}
+              style={{
+                width: '100%', background: '#4f46e5', color: 'white',
+                border: 'none', borderRadius: 12, padding: '0.875rem',
+                fontWeight: 700, fontSize: '1rem', cursor: 'pointer',
+              }}
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Install App Button */}
       {installPrompt && !installDismissed && (
         <div style={{
           position: 'fixed',
