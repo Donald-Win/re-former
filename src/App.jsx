@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Search, FileText, CheckCircle2, Circle, ExternalLink, Download,
-  ChevronDown, ChevronUp, List, Briefcase, X, Share2, PenLine, Printer } from 'lucide-react'
+  ChevronDown, ChevronUp, List, Briefcase, X, Share2, PenLine } from 'lucide-react'
 
 import PoleRecordWizard from './wizards/PoleWizard'
 import TransformerWizardApp from './wizards/TransformerWizard'
@@ -270,13 +270,6 @@ const AsBuiltFormSelector = () => {
     if (pdfBlobUrl) {
       URL.revokeObjectURL(pdfBlobUrl);
       setPdfBlobUrl('');
-    }
-  };
-
-  const handlePrint = () => {
-    const iframe = document.getElementById('pdf-iframe');
-    if (iframe && iframe.contentWindow) {
-      iframe.contentWindow.print();
     }
   };
 
@@ -642,51 +635,64 @@ const AsBuiltFormSelector = () => {
         )}
       </div>
 
-      {/* PDF Viewer Modal */}
+      {/* PDF Viewer Modal — identical style to WizardShell PDF overlay */}
       {pdfViewerOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex flex-col">
-          <div className="bg-white shadow-lg p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-              <FileText className="text-indigo-600 flex-shrink-0" size={24} />
-              <h2 className="font-semibold text-gray-900 truncate text-sm md:text-base">{currentPdfName}</h2>
+        <div style={{
+          position: 'fixed', inset: 0,
+          background: 'rgba(0,0,0,0.9)', zIndex: 50,
+          display: 'flex', flexDirection: 'column',
+        }}>
+          {/* Header — matches WizardShell preview header exactly */}
+          <div style={{
+            background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+            padding: '12px 16px',
+            display: 'flex', alignItems: 'center',
+            justifyContent: 'space-between', flexShrink: 0,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+              <FileText size={22} color="#4f46e5" style={{ flexShrink: 0 }} />
+              <span style={{
+                fontWeight: 600, fontSize: 15, color: '#111',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>{currentPdfName}</span>
             </div>
-            <div className="flex items-center gap-2 ml-4">
-              {navigator.share && (
-                <button onClick={handleShare} className="p-2 hover:bg-gray-100 rounded-lg transition-colors" title="Share">
-                  <Share2 size={20} className="text-gray-700" />
-                </button>
-              )}
-              <button onClick={handlePrint} className="p-2 hover:bg-gray-100 rounded-lg transition-colors" title="Print">
-                <Printer size={20} className="text-gray-700" />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 12, flexShrink: 0 }}>
+              <button
+                onClick={handleShare}
+                disabled={!pdfBlobUrl}
+                style={{
+                  padding: '8px 14px', border: 'none',
+                  background: pdfBlobUrl ? '#4f46e5' : '#9ca3af',
+                  color: '#fff', cursor: pdfBlobUrl ? 'pointer' : 'default',
+                  borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6,
+                  fontFamily: 'inherit', fontSize: 13, fontWeight: 700,
+                }}
+              >
+                <Share2 size={16} color="#fff" />
+                {pdfBlobUrl ? 'Print / Save / Share' : 'Loading…'}
               </button>
-              <button onClick={handleClosePdf} className="p-2 hover:bg-red-100 rounded-lg transition-colors ml-2" title="Close">
-                <X size={24} className="text-red-600" />
+              <button onClick={handleClosePdf} style={{
+                padding: 8, border: 'none', background: 'none',
+                cursor: 'pointer', borderRadius: 8,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <X size={24} color="#dc2626" />
               </button>
             </div>
           </div>
 
-          <div className="flex-1 bg-gray-900 overflow-hidden">
+          {/* PDF content */}
+          <div style={{ flex: 1, background: '#111827', overflow: 'hidden' }}>
             {pdfBlobUrl ? (
-              <iframe id="pdf-iframe" src={pdfBlobUrl} className="w-full h-full border-0" title={currentPdfName} />
+              <iframe id="pdf-iframe" src={pdfBlobUrl} style={{ width: '100%', height: '100%', border: 'none' }} title={currentPdfName} />
             ) : (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center text-white">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                <div style={{ textAlign: 'center', color: '#fff' }}>
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-3" />
-                  <p className="text-sm opacity-75">Loading PDF…</p>
+                  <p style={{ fontSize: 14, opacity: 0.75 }}>Loading PDF…</p>
                 </div>
               </div>
             )}
-          </div>
-
-          <div className="md:hidden bg-white shadow-lg p-3 flex justify-around">
-            {navigator.share && (
-              <button onClick={handleShare} className="flex flex-col items-center gap-1 px-4 py-2 text-indigo-600">
-                <Share2 size={20} /><span className="text-xs">Share</span>
-              </button>
-            )}
-            <button onClick={handlePrint} className="flex flex-col items-center gap-1 px-4 py-2 text-indigo-600">
-              <Printer size={20} /><span className="text-xs">Print</span>
-            </button>
           </div>
         </div>
       )}
