@@ -270,13 +270,16 @@ const AsBuiltFormSelector = () => {
   }
 
   const handleShare = async () => {
-    if (!pdfBytes) return
-    const file = new File([pdfBytes], currentPdfName, { type: 'application/pdf' })
-    if (navigator.canShare?.({ files: [file] })) {
-      try { await navigator.share({ files: [file] }) } catch (_) {}
-    } else if (pdfBlobUrl) {
-      window.open(pdfBlobUrl, '_blank')
-    }
+    if (!pdfBlobUrl) return
+    try {
+      const blob = await fetch(pdfBlobUrl).then(r => r.blob())
+      const file = new File([blob], currentPdfName, { type: 'application/pdf' })
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file] })
+      } else {
+        window.open(pdfBlobUrl, '_blank')
+      }
+    } catch (err) { if (err.name !== 'AbortError') console.error('Share failed:', err) }
   }
 
   const filteredWorkTypes = Object.keys(workTypeMapping).filter(work =>
@@ -649,17 +652,17 @@ const AsBuiltFormSelector = () => {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 12, flexShrink: 0 }}>
               <button
                 onClick={handleShare}
-                disabled={!pdfBytes}
+                disabled={!pdfBlobUrl}
                 style={{
                   padding: '8px 14px', border: 'none',
-                  background: pdfBytes ? '#4f46e5' : '#9ca3af',
-                  color: '#fff', cursor: pdfBytes ? 'pointer' : 'default',
+                  background: pdfBlobUrl ? '#4f46e5' : '#9ca3af',
+                  color: '#fff', cursor: pdfBlobUrl ? 'pointer' : 'default',
                   borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6,
                   fontFamily: 'inherit', fontSize: 13, fontWeight: 700,
                 }}
               >
                 <Share2 size={16} color="#fff" />
-                {pdfBytes ? 'Print / Save / Share' : 'Loading…'}
+                {pdfBlobUrl ? 'Print / Save / Share' : 'Loading…'}
               </button>
               <button onClick={handleClosePdf} style={{
                 padding: 8, border: 'none', background: 'none',
