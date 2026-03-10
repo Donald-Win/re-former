@@ -23,6 +23,7 @@ const AsBuiltFormSelector = () => {
   const [currentPdfUrl, setCurrentPdfUrl] = useState('');
   const [currentPdfName, setCurrentPdfName] = useState('');
   const [pdfBlobUrl, setPdfBlobUrl] = useState('');
+  const [pdfBlob, setPdfBlob] = useState(null);
   const [poleChoiceOpen, setPoleChoiceOpen] = useState(false);
   const [poleWizardOpen, setPoleWizardOpen] = useState(false);
   const [txChoiceOpen, setTxChoiceOpen] = useState(false);
@@ -250,10 +251,15 @@ const AsBuiltFormSelector = () => {
       setCurrentPdfUrl(url);
       setCurrentPdfName(displayName);
       setPdfBlobUrl('');
+      setPdfBlob(null);
       setPdfViewerOpen(true);
       fetch(url)
         .then(r => r.blob())
-        .then(blob => setPdfBlobUrl(URL.createObjectURL(blob)))
+        .then(blob => {
+          setPdfBlob(blob);
+          // #toolbar=0 suppresses Safari's built-in PDF viewer toolbar/padding
+          setPdfBlobUrl(URL.createObjectURL(blob) + '#toolbar=0');
+        })
         .catch(() => {
           setPdfViewerOpen(false);
           window.open(url, '_blank', 'noopener,noreferrer');
@@ -268,17 +274,16 @@ const AsBuiltFormSelector = () => {
     setCurrentPdfUrl('');
     setCurrentPdfName('');
     if (pdfBlobUrl) {
-      URL.revokeObjectURL(pdfBlobUrl);
+      URL.revokeObjectURL(pdfBlobUrl.split('#')[0]);
       setPdfBlobUrl('');
+      setPdfBlob(null);
     }
   };
 
   const handleShare = async () => {
-    if (!navigator.share) return;
+    if (!navigator.share || !pdfBlob) return;
     try {
-      const response = await fetch(currentPdfUrl);
-      const blob = await response.blob();
-      const file = new File([blob], currentPdfName, { type: 'application/pdf' });
+      const file = new File([pdfBlob], currentPdfName, { type: 'application/pdf' });
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({ files: [file] });
       } else {
@@ -659,17 +664,17 @@ const AsBuiltFormSelector = () => {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 12, flexShrink: 0 }}>
               <button
                 onClick={handleShare}
-                disabled={!pdfBlobUrl}
+                disabled={!pdfBlob}
                 style={{
                   padding: '8px 14px', border: 'none',
-                  background: pdfBlobUrl ? '#4f46e5' : '#9ca3af',
-                  color: '#fff', cursor: pdfBlobUrl ? 'pointer' : 'default',
+                  background: pdfBlob ? '#4f46e5' : '#9ca3af',
+                  color: '#fff', cursor: pdfBlob ? 'pointer' : 'default',
                   borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6,
                   fontFamily: 'inherit', fontSize: 13, fontWeight: 700,
                 }}
               >
                 <Share2 size={16} color="#fff" />
-                {pdfBlobUrl ? 'Print / Save / Share' : 'Loading…'}
+                {pdfBlob ? 'Print / Save / Share' : 'Loading…'}
               </button>
               <button onClick={handleClosePdf} style={{
                 padding: 8, border: 'none', background: 'none',
@@ -682,9 +687,14 @@ const AsBuiltFormSelector = () => {
           </div>
 
           {/* PDF content */}
-          <div style={{ flex: 1, background: '#111827', overflow: 'hidden' }}>
+          <div style={{ flex: 1, background: '#111827', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
             {pdfBlobUrl ? (
-              <iframe id="pdf-iframe" src={pdfBlobUrl} style={{ width: '100%', height: '100%', border: 'none' }} title={currentPdfName} />
+              <iframe
+                id="pdf-iframe"
+                src={pdfBlobUrl}
+                style={{ flex: 1, width: '100%', border: 'none', display: 'block' }}
+                title={currentPdfName}
+              />
             ) : (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
                 <div style={{ textAlign: 'center', color: '#fff' }}>
