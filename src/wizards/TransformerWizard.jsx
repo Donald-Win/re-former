@@ -302,13 +302,13 @@ function TransformerWizardApp({ onClose }) {
   const PHASES  = ['Three', 'One', 'SWER']
   const TX_TYPE = ['Bearer', 'Grnd Mount', 'Hanger', 'Pedestal']
 
-  const { contractor: _contractor, namePrint: _namePrint } = getUserPrefs()
+  const { contractor: _contractor, namePrint: _namePrint, signed: _signed, dateWorkCompleted: _date } = getUserPrefs()
   const [d, setD] = useState({
     streetRoad: '', cityTown: '', district: '',
     contractor: _contractor, namePrint: _namePrint,
     npJobNumber: '', projectName: '',
     pcoWONo: '', ciwrNo: '',
-    dateWorkCompleted: '', signed: '',
+    dateWorkCompleted: _date, signed: _signed,
     transformerSiteId: '', poleId: '',
     zoneSubstation: '', feederId: '',
     installationType: '', ownership: '', ownershipOther: '',
@@ -367,6 +367,8 @@ function TransformerWizardApp({ onClose }) {
   const set   = k => v => setD(p => ({ ...p, [k]: v }))
   React.useEffect(() => { saveUserPref('contractor', d.contractor) }, [d.contractor])
   React.useEffect(() => { saveUserPref('namePrint', d.namePrint) }, [d.namePrint])
+  React.useEffect(() => { if (d.signed) saveUserPref('signed', d.signed) }, [d.signed])
+  React.useEffect(() => { saveUserPref('dateWorkCompleted', d.dateWorkCompleted) }, [d.dateWorkCompleted])
 
 
   const loadJobHistory = fields => {

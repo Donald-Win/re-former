@@ -177,7 +177,7 @@ async function generateLvPdf(d, photos = []) {
 export default function LvConnectionWizard({ onClose }) {
   const [step, setStep] = useState(0)
 
-  const { contractor: _contractor, namePrint: _namePrint } = getUserPrefs()
+  const { contractor: _contractor, namePrint: _namePrint, signed: _signed, dateWorkCompleted: _date } = getUserPrefs()
     const [d, setD] = useState({
     npJobNumber:          '',
     projectName:          '',
@@ -187,9 +187,9 @@ export default function LvConnectionWizard({ onClose }) {
     cityTown:             '',
     district:             '',
     contractor:           _contractor,
-    dateWorkCompleted:    '',
+    dateWorkCompleted:    _date,
     namePrint:            _namePrint,
-    signed:               '',
+    signed:               _signed,
     cocNumber:            '',
     cowShedNumber:        '',
     icpNumber:            '',
@@ -225,6 +225,8 @@ export default function LvConnectionWizard({ onClose }) {
   const set = (k, v) => setD(prev => ({ ...prev, [k]: v }))
   React.useEffect(() => { saveUserPref('contractor', d.contractor) }, [d.contractor])
   React.useEffect(() => { saveUserPref('namePrint', d.namePrint) }, [d.namePrint])
+  React.useEffect(() => { if (d.signed) saveUserPref('signed', d.signed) }, [d.signed])
+  React.useEffect(() => { saveUserPref('dateWorkCompleted', d.dateWorkCompleted) }, [d.dateWorkCompleted])
 
   // ── Auto-save job history on step 0 → 1 ───────────────────
   useEffect(() => {

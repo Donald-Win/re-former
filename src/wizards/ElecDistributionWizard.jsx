@@ -264,7 +264,7 @@ async function generateEbPdf(d, photos = []) {
 export default function ElecDistributionWizard({ onClose }) {
   const [step, setStep] = useState(0)
 
-  const { contractor: _contractor, namePrint: _namePrint } = getUserPrefs()
+  const { contractor: _contractor, namePrint: _namePrint, signed: _signed, dateWorkCompleted: _date } = getUserPrefs()
     const [d, setD] = useState({
     // Standard job-history fields
     npJobNumber:          '',
@@ -275,9 +275,9 @@ export default function ElecDistributionWizard({ onClose }) {
     cityTown:             '',
     district:             '',
     contractor:           _contractor,
-    dateWorkCompleted:    '',
+    dateWorkCompleted:    _date,
     namePrint:            _namePrint,
-    signed:               '',
+    signed:               _signed,
     // Distribution Main
     distributionMain:      '',
     undergroundCableDepth: '',
@@ -314,6 +314,8 @@ export default function ElecDistributionWizard({ onClose }) {
   const set = (k, v) => setD(prev => ({ ...prev, [k]: v }))
   React.useEffect(() => { saveUserPref('contractor', d.contractor) }, [d.contractor])
   React.useEffect(() => { saveUserPref('namePrint', d.namePrint) }, [d.namePrint])
+  React.useEffect(() => { if (d.signed) saveUserPref('signed', d.signed) }, [d.signed])
+  React.useEffect(() => { saveUserPref('dateWorkCompleted', d.dateWorkCompleted) }, [d.dateWorkCompleted])
 
   // Stable setRow — passed as prop to CableRow to avoid remounting
   const setRow = (i, k, v) => setD(prev => {

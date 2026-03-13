@@ -164,14 +164,16 @@ function PoleRecordWizard({ onClose }) {
   const [pdfError, setPdfError] = useState(null);
   const [photos, setPhotos] = useState([]);
   const blobUrlRef = useRef(null);
-  const { contractor: _contractor, namePrint: _namePrint } = getUserPrefs()
+  const { contractor: _contractor, namePrint: _namePrint, signed: _signed, dateWorkCompleted: _date } = getUserPrefs()
   const [d, setD] = useState({
     npJobNumber: '', projectName: '',
-    conductors: [{level:"1",existing:"",size:"",material:"",insulation:""}],
+    conductors: [{level:"1",existing:"",size:"",material:"",insulation:"",picker:null}],
     crossarms: [{level:"1",existing:"",voltage:"",endSize:"",length:"",arms:"",insulatorType:"",armMaterial:"",wires:""}],
     accessories: [],
     contractor: _contractor,
     namePrint: _namePrint,
+    signed: _signed,
+    dateWorkCompleted: _date,
   });
 
   const isPreview = step === W_STEPS.length - 1;
@@ -208,6 +210,8 @@ function PoleRecordWizard({ onClose }) {
   }, [step])
   React.useEffect(() => { saveUserPref('contractor', d.contractor) }, [d.contractor])
   React.useEffect(() => { saveUserPref('namePrint', d.namePrint) }, [d.namePrint])
+  React.useEffect(() => { if (d.signed) saveUserPref('signed', d.signed) }, [d.signed])
+  React.useEffect(() => { saveUserPref('dateWorkCompleted', d.dateWorkCompleted) }, [d.dateWorkCompleted])
 
   const tog = k => v => setD(p=>({...p,[k]:p[k]===v?"":v}));
   const togAcc = v => setD(p=>{const a=p.accessories||[];return{...p,accessories:a.includes(v)?a.filter(x=>x!==v):[...a,v]};});
@@ -348,6 +352,177 @@ function PoleRecordWizard({ onClose }) {
         const LEVELS     = [["1","1"],["2","2"],["3","3"],["4","4"],["5","5"],["6","6"],["7","7"]]
         const EN         = [["E","Existing (E)"],["N","New (N)"]]
         const MATERIAL   = [["HDCu","HDCu"],["ACSR","ACSR"],["AAC","AAC"],["AAAC","AAAC"],["ABC","ABC"]]
+        // ── Conductor quick-pick data ─────────────────────────────────────────
+        const CU_SIZES = ['10mm²','16mm²','25mm²','35mm²','50mm²','70mm²','95mm²','120mm²','150mm²','185mm²','240mm²']
+        const ALI_CONDUCTORS = [
+          // AAC
+          {name:'Bee',type:'AAC'},{name:'Beetle',type:'AAC'},{name:'Butterfly',type:'AAC'},
+          {name:'Caterpillar',type:'AAC'},{name:'Centipede',type:'AAC'},{name:'Chafer',type:'AAC'},
+          {name:'Cockroach',type:'AAC'},{name:'Cricket',type:'AAC'},{name:'Fly',type:'AAC'},
+          {name:'Gnat',type:'AAC'},{name:'Grasshopper',type:'AAC'},{name:'Hornet',type:'AAC'},
+          {name:'Huhu',type:'AAC'},{name:'Kutu',type:'AAC'},{name:'Ladybird',type:'AAC'},
+          {name:'Mata',type:'AAC'},{name:'Moka',type:'AAC'},{name:'Namu',type:'AAC'},
+          {name:'Poko',type:'AAC'},{name:'Rango',type:'AAC'},{name:'Spider',type:'AAC'},
+          {name:'Wasp',type:'AAC'},{name:'Weke',type:'AAC'},{name:'Weta',type:'AAC'},
+          // ACSR
+          {name:'Coyote',type:'ACSR'},{name:'Dingo',type:'ACSR'},{name:'Dog',type:'ACSR'},
+          {name:'Ferret',type:'ACSR'},{name:'Fox',type:'ACSR'},{name:'Gopher',type:'ACSR'},
+          {name:'Hare',type:'ACSR'},{name:'Hyena',type:'ACSR'},{name:'Jaguar',type:'ACSR'},
+          {name:'Magpie',type:'ACSR'},{name:'Mink',type:'ACSR'},{name:'Moa',type:'ACSR'},
+          {name:'Petrel',type:'ACSR'},{name:'Rabbit',type:'ACSR'},{name:'Raccoon',type:'ACSR'},
+          {name:'Squirrel',type:'ACSR'},{name:'Swan',type:'ACSR'},{name:'Tiger',type:'ACSR'},
+          {name:'Waxwing',type:'ACSR'},{name:'Wolf',type:'ACSR'},{name:'Zebra',type:'ACSR'},
+          // AAAC
+          {name:'Argon',type:'AAAC'},{name:'Boron',type:'AAAC'},{name:'Chlorine',type:'AAAC'},
+          {name:'Chromium',type:'AAAC'},{name:'Fluorine',type:'AAAC'},{name:'Helium',type:'AAAC'},
+          {name:'Hydrogen',type:'AAAC'},{name:'Iodine',type:'AAAC'},{name:'Krypton',type:'AAAC'},
+          {name:'Lutelium',type:'AAAC'},{name:'Neon',type:'AAAC'},{name:'Nitrogen',type:'AAAC'},
+          {name:'Nobelium',type:'AAAC'},{name:'Oxygen',type:'AAAC'},{name:'Phosphorus',type:'AAAC'},
+          {name:'Selenium',type:'AAAC'},{name:'Silicon',type:'AAAC'},{name:'Sulphur',type:'AAAC'},
+          {name:'Xenon',type:'AAAC'},
+        ]
+
+        // ── Per-row picker UI ─────────────────────────────────────────────────
+        const pathBtn = (label, active, onClick, color='#6366f1') => (
+          <button type="button" onClick={onClick} style={{
+            flex:1, padding:'8px 4px', borderRadius:7, fontFamily:'inherit', fontSize:13,
+            fontWeight:700, cursor:'pointer',
+            border:`2px solid ${active ? color : '#ddd'}`,
+            background: active ? color : '#fff',
+            color: active ? '#fff' : '#555',
+          }}>{label}</button>
+        )
+        const insBtn = (label, active, onClick) => (
+          <button type="button" onClick={onClick} style={{
+            flex:1, padding:'8px 4px', borderRadius:7, fontFamily:'inherit', fontSize:13,
+            fontWeight:700, cursor:'pointer',
+            border:`2px solid ${active ? W_PURPLE : '#ddd'}`,
+            background: active ? W_PURPLE : '#fff',
+            color: active ? '#fff' : '#555',
+          }}>{label}</button>
+        )
+
+        const ConductorPicker = ({c, i}) => {
+          const picker = c.picker || (c.size||c.material ? 'manual' : null)
+          const setField = (field, val) => setCond(i, field, val)
+          const setMulti = (fields) => setD(p => {
+            const conds = [...p.conductors]
+            conds[i] = {...conds[i], ...fields}
+            return {...p, conductors: conds}
+          })
+
+          // ── Summary bar shown when a path is complete ──────────────────────
+          const summary = c.size && c.material && c.insulation ? (
+            <div style={{
+              background:'#eef2ff', border:`1px solid ${W_PURPLE}`, borderRadius:7,
+              padding:'6px 10px', marginBottom:8, fontSize:13, fontWeight:600, color:W_PURPLE,
+              display:'flex', justifyContent:'space-between', alignItems:'center',
+            }}>
+              <span>{c.size} · {c.material} · {c.insulation}</span>
+              <button type="button" onClick={()=>setMulti({size:'',material:'',insulation:'',picker:null})}
+                style={{background:'none',border:'none',color:W_PURPLE,cursor:'pointer',fontSize:18,padding:0,lineHeight:1}}>↺</button>
+            </div>
+          ) : null
+
+          // ── Path chooser ───────────────────────────────────────────────────
+          if (!picker) return (
+            <div>
+              {summary}
+              <div style={{fontSize:11,color:'#888',marginBottom:5}}>Select conductor type</div>
+              <div style={{display:'flex',gap:6}}>
+                {pathBtn('⚡ Cu', false, ()=>setField('picker','cu'), '#b45309')}
+                {pathBtn('🔩 Ali', false, ()=>setField('picker','ali'), '#0369a1')}
+                {pathBtn('✏️ Manual', false, ()=>setField('picker','manual'), '#6b7280')}
+              </div>
+            </div>
+          )
+
+          // ── Cu path ───────────────────────────────────────────────────────
+          if (picker === 'cu') return (
+            <div>
+              {summary}
+              <div style={{display:'flex',gap:6,marginBottom:8}}>
+                {pathBtn('⚡ Cu', true, ()=>{}, '#b45309')}
+                {pathBtn('🔩 Ali', false, ()=>setMulti({size:'',material:'',insulation:'',picker:'ali'}), '#0369a1')}
+                {pathBtn('✏️ Manual', false, ()=>setMulti({size:'',material:'',insulation:'',picker:'manual'}), '#6b7280')}
+              </div>
+              {!c.size && <>
+                <div style={{fontSize:11,color:'#888',marginBottom:5}}>Select size</div>
+                <div style={{display:'flex',flexWrap:'wrap',gap:5,marginBottom:8}}>
+                  {CU_SIZES.map(s=>(
+                    <button key={s} type="button" onClick={()=>setMulti({size:s,material:'HDCu'})}
+                      style={{padding:'6px 10px',borderRadius:6,border:'1.5px solid #d97706',
+                        background:'#fffbeb',color:'#92400e',fontFamily:'inherit',fontSize:12,
+                        fontWeight:600,cursor:'pointer'}}>{s}</button>
+                  ))}
+                </div>
+              </>}
+              {c.size && !c.insulation && <>
+                <div style={{fontSize:11,color:'#888',marginBottom:5}}>Insulation — {c.size} HDCu</div>
+                <div style={{display:'flex',gap:6}}>
+                  {insBtn('Bare', false, ()=>setField('insulation','Bare'))}
+                  {insBtn('PVC',  false, ()=>setField('insulation','PVC'))}
+                </div>
+              </>}
+            </div>
+          )
+
+          // ── Ali path ──────────────────────────────────────────────────────
+          if (picker === 'ali') return (
+            <div>
+              {summary}
+              <div style={{display:'flex',gap:6,marginBottom:8}}>
+                {pathBtn('⚡ Cu', false, ()=>setMulti({size:'',material:'',insulation:'',picker:'cu'}), '#b45309')}
+                {pathBtn('🔩 Ali', true, ()=>{}, '#0369a1')}
+                {pathBtn('✏️ Manual', false, ()=>setMulti({size:'',material:'',insulation:'',picker:'manual'}), '#6b7280')}
+              </div>
+              {!c.size && <>
+                <div style={{fontSize:11,color:'#888',marginBottom:5}}>Select conductor</div>
+                <div style={{maxHeight:180,overflowY:'auto',padding:'2px 0'}}>
+                  {['AAC','ACSR','AAAC'].map(type=>(
+                    <div key={type} style={{marginBottom:8}}>
+                      <div style={{fontSize:10,fontWeight:700,color:'#888',marginBottom:4,letterSpacing:'0.05em'}}>{type}</div>
+                      <div style={{display:'flex',flexWrap:'wrap',gap:4}}>
+                        {ALI_CONDUCTORS.filter(c=>c.type===type).map(cd=>(
+                          <button key={cd.name} type="button"
+                            onClick={()=>setMulti({size:cd.name,material:cd.type})}
+                            style={{padding:'5px 9px',borderRadius:6,border:'1.5px solid #bae6fd',
+                              background:'#f0f9ff',color:'#075985',fontFamily:'inherit',
+                              fontSize:12,fontWeight:600,cursor:'pointer'}}>{cd.name}</button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>}
+              {c.size && !c.insulation && <>
+                <div style={{fontSize:11,color:'#888',marginBottom:5}}>Insulation — {c.size} ({c.material})</div>
+                <div style={{display:'flex',gap:6}}>
+                  {insBtn('Bare', false, ()=>setField('insulation','Bare'))}
+                  {insBtn('PVC',  false, ()=>setField('insulation','PVC'))}
+                </div>
+              </>}
+            </div>
+          )
+
+          // ── Manual path ───────────────────────────────────────────────────
+          return (
+            <div>
+              {summary}
+              <div style={{display:'flex',gap:6,marginBottom:8}}>
+                {pathBtn('⚡ Cu', false, ()=>setMulti({size:'',material:'',insulation:'',picker:'cu'}), '#b45309')}
+                {pathBtn('🔩 Ali', false, ()=>setMulti({size:'',material:'',insulation:'',picker:'ali'}), '#0369a1')}
+                {pathBtn('✏️ Manual', true, ()=>{}, '#6b7280')}
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                <WF label="Conductor Size" v={c.size} set={v=>setField('size',v)} ph="e.g. 95mm²" />
+                <WSel label="Material" value={c.material} onChange={v=>setField('material',v)} options={MATERIAL} />
+              </div>
+              <WSel label="Insulation Type" value={c.insulation} onChange={v=>setField('insulation',v)} options={INSULATION} />
+            </div>
+          )
+        }
+
         const INSULATION = [["Bare","Bare"],["PVC","PVC"],["XLPE","XLPE"],["HDPE","HDPE"]]
         return <>
           <WF label="Number of Pole Service Connections" v={d.serviceConnections} set={set("serviceConnections")} ph="e.g. 2" />
@@ -356,7 +531,7 @@ function PoleRecordWizard({ onClose }) {
           {(()=>{
             const firstEmptyIdx=d.conductors.findIndex(c=>!(c.level||c.existing||c.size||c.material||c.insulation))
             return d.conductors.map((c,i)=>{
-              const hasData=c.level||c.existing||c.size||c.material||c.insulation
+              const hasData=c.level||c.existing||c.size||c.material||c.insulation||c.picker
               const isFirstEmpty=i===firstEmptyIdx
               const isLastRow=i===d.conductors.length-1
               return (hasData||isFirstEmpty)?<div key={i} style={{background:"#f8f8ff",border:"1.5px solid #ddd",borderRadius:10,padding:11,marginBottom:10,position:"relative"}}>
@@ -365,11 +540,9 @@ function PoleRecordWizard({ onClose }) {
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
                   <WSel label="Level" value={c.level} onChange={v=>setCond(i,"level",v)} options={LEVELS} />
                   <WSel label="Existing / New" value={c.existing} onChange={v=>setCond(i,"existing",v)} options={EN} />
-                  <WF label="Conductor Size" v={c.size} set={v=>setCond(i,"size",v)} ph="e.g. 95mm²" />
-                  <WSel label="Material" value={c.material} onChange={v=>setCond(i,"material",v)} options={MATERIAL} />
                 </div>
-                <WSel label="Insulation Type" value={c.insulation} onChange={v=>setCond(i,"insulation",v)} options={INSULATION} />
-                {isLastRow&&d.conductors.length<7&&<button onClick={()=>setD(p=>({...p,conductors:[...p.conductors,{level:String(p.conductors.length+1),existing:"",size:"",material:"",insulation:""}]}))} style={{marginTop:10,padding:"10px 16px",borderRadius:8,border:"none",background:W_PURPLE,color:"#fff",fontFamily:"inherit",fontSize:12,fontWeight:700,cursor:"pointer"}}>+ Add Another Row</button>}
+                <ConductorPicker c={c} i={i} />
+                {isLastRow&&d.conductors.length<7&&<button onClick={()=>setD(p=>({...p,conductors:[...p.conductors,{level:String(p.conductors.length+1),existing:"",size:"",material:"",insulation:"",picker:null}]}))} style={{marginTop:10,padding:"10px 16px",borderRadius:8,border:"none",background:W_PURPLE,color:"#fff",fontFamily:"inherit",fontSize:12,fontWeight:700,cursor:"pointer"}}>+ Add Another Row</button>}
               </div>:null
             })
           })()}

@@ -276,7 +276,7 @@ async function generateEdPdf(d, photos = []) {
 export default function LvBoxWizard({ onClose }) {
   const [step, setStep] = useState(0)
 
-  const { contractor: _contractor } = getUserPrefs()
+  const { contractor: _contractor, signed: _signed, dateWorkCompleted: _date } = getUserPrefs()
     const [d, setD] = useState({
     // Job Details
     npJobNumber:           '',
@@ -287,8 +287,8 @@ export default function LvBoxWizard({ onClose }) {
     pcoWONo:               '',
     ciwrNo:                '',
     contractor:            _contractor,
-    dateWorkCompleted:     '',
-    signed:                '',
+    dateWorkCompleted:     _date,
+    signed:                _signed,
     // Box table rows
     boxRows: [EMPTY_BOX_ROW()],
     // Comments
@@ -308,6 +308,8 @@ export default function LvBoxWizard({ onClose }) {
   const prevStepRef = useRef(step)
   const set    = (k, v) => setD(prev => ({ ...prev, [k]: v }))
   React.useEffect(() => { saveUserPref('contractor', d.contractor) }, [d.contractor])
+  React.useEffect(() => { if (d.signed) saveUserPref('signed', d.signed) }, [d.signed])
+  React.useEffect(() => { saveUserPref('dateWorkCompleted', d.dateWorkCompleted) }, [d.dateWorkCompleted])
   const setRow = (i, k, v) => setD(prev => {
     const rows = prev.boxRows.map((r, idx) => idx === i ? { ...r, [k]: v } : r)
     return { ...prev, boxRows: rows }

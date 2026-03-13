@@ -258,14 +258,14 @@ function ElecEquipWizard({ onClose = () => {} }) {
   const [calibrationPdfBytes, setCalibrationPdfBytes] = useState(null)
   const blobUrlRef = useRef(null)
 
-  const { contractor: _contractor, namePrint: _namePrint } = getUserPrefs()
+  const { contractor: _contractor, namePrint: _namePrint, signed: _signed, dateWorkCompleted: _date } = getUserPrefs()
     const [d, setD] = useState({
     // ── Canonical shared fields (Step 0) ──────────────────────────────────────
     npJobNumber: '', projectName: '',
     pcoWONo: '', ciwrNo: '',
     streetRoad: '', cityTown: '', district: '',
-    contractor: _contractor, dateWorkCompleted: '',
-    signed: '', namePrint: _namePrint,
+    contractor: _contractor, dateWorkCompleted: _date,
+    signed: _signed, namePrint: _namePrint,
     // ── Equipment Details (Step 1) ────────────────────────────────────────────
     newEquipmentId: '', oldEquipmentId: '', locationPoleSiteId: '',
     manufacturer: '', model: '', serialNo: '',
@@ -314,6 +314,8 @@ function ElecEquipWizard({ onClose = () => {} }) {
   const set = k => v => setD(p => ({ ...p, [k]: v }))
   React.useEffect(() => { saveUserPref('contractor', d.contractor) }, [d.contractor])
   React.useEffect(() => { saveUserPref('namePrint', d.namePrint) }, [d.namePrint])
+  React.useEffect(() => { if (d.signed) saveUserPref('signed', d.signed) }, [d.signed])
+  React.useEffect(() => { saveUserPref('dateWorkCompleted', d.dateWorkCompleted) }, [d.dateWorkCompleted])
 
 
   const loadJobHistory = fields => {

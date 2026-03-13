@@ -2,27 +2,43 @@
  * userPrefs — lightweight localStorage wrapper for per-device user preferences.
  *
  * Stored keys:
- *   rf_pref_contractor  — contractor company name
- *   rf_pref_namePrint   — tech's printed name
- *
- * These auto-populate the Contractor and Name (Print) fields in every wizard
- * and update whenever the user edits them.
+ *   rf_pref_contractor        — contractor company name
+ *   rf_pref_namePrint         — tech's printed name
+ *   rf_pref_signed            — signature dataURL
+ *   rf_pref_dateWorkCompleted — last-used date (YYYY-MM-DD), refreshed to today on each load
  */
 
 const KEYS = {
-  contractor: 'rf_pref_contractor',
-  namePrint:  'rf_pref_namePrint',
+  contractor:        'rf_pref_contractor',
+  namePrint:         'rf_pref_namePrint',
+  signed:            'rf_pref_signed',
+  dateWorkCompleted: 'rf_pref_dateWorkCompleted',
 }
 
-/** Returns { contractor, namePrint } from localStorage (empty strings if not set). */
+/** Today's date as YYYY-MM-DD (matches HTML date input format). */
+function todayString() {
+  const d = new Date()
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+/**
+ * Returns { contractor, namePrint, signed, dateWorkCompleted } from localStorage.
+ * dateWorkCompleted always returns today — it's used to pre-fill the field,
+ * and the tech can change it if the work was done on a different day.
+ */
 export function getUserPrefs() {
   return {
-    contractor: localStorage.getItem(KEYS.contractor) || '',
-    namePrint:  localStorage.getItem(KEYS.namePrint)  || '',
+    contractor:        localStorage.getItem(KEYS.contractor)        || '',
+    namePrint:         localStorage.getItem(KEYS.namePrint)         || '',
+    signed:            localStorage.getItem(KEYS.signed)            || '',
+    dateWorkCompleted: todayString(),
   }
 }
 
-/** Saves a single pref. key must be 'contractor' or 'namePrint'. */
+/** Saves a single pref. key must be one of the four pref keys. */
 export function saveUserPref(key, value) {
   if (!KEYS[key]) return
   if (value) {
