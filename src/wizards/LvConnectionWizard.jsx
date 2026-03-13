@@ -8,6 +8,8 @@ import { PdfCanvasPreview } from '../shared/PdfCanvasPreview'
 import { PhotoAttachStep } from '../shared/PhotoAttachStep'
 import { appendPhotosToPdf } from '../shared/appendPhotosToPdf'
 import { sharePdf } from '../shared/sharePdf'
+import { getUserPrefs, saveUserPref } from '../shared/userPrefs'
+import { GpsLocationButton } from '../shared/GpsLocationButton'
 import { CoordOverlay } from '../shared/CoordOverlay'
 import { saveToHistory } from '../shared/jobHistory'
 import { JobHistoryPicker } from '../shared/JobHistoryPicker'
@@ -175,7 +177,8 @@ async function generateLvPdf(d, photos = []) {
 export default function LvConnectionWizard({ onClose }) {
   const [step, setStep] = useState(0)
 
-  const [d, setD] = useState({
+  const { contractor: _contractor, namePrint: _namePrint } = getUserPrefs()
+    const [d, setD] = useState({
     npJobNumber:          '',
     projectName:          '',
     pcoWONo:              '',
@@ -183,9 +186,9 @@ export default function LvConnectionWizard({ onClose }) {
     streetRoad:           '',
     cityTown:             '',
     district:             '',
-    contractor:           '',
+    contractor:           _contractor,
     dateWorkCompleted:    '',
-    namePrint:            '',
+    namePrint:            _namePrint,
     signed:               '',
     cocNumber:            '',
     cowShedNumber:        '',
@@ -220,6 +223,8 @@ export default function LvConnectionWizard({ onClose }) {
 
   const prevStepRef = useRef(step)
   const set = (k, v) => setD(prev => ({ ...prev, [k]: v }))
+  React.useEffect(() => { saveUserPref('contractor', d.contractor) }, [d.contractor])
+  React.useEffect(() => { saveUserPref('namePrint', d.namePrint) }, [d.namePrint])
 
   // ── Auto-save job history on step 0 → 1 ───────────────────
   useEffect(() => {
@@ -303,6 +308,7 @@ export default function LvConnectionWizard({ onClose }) {
         <WF label="PCo W/O No."  v={d.pcoWONo}  set={v => set('pcoWONo',  v)} accent={LV_TEAL} />
         <WF label="CIWR No."     v={d.ciwrNo}   set={v => set('ciwrNo',   v)} accent={LV_TEAL} />
       </div>
+      <GpsLocationButton accent={LV_TEAL} onLocation={loc => setD(p => ({...p, ...loc}))} />
       <WF
         label="No./Street/Road"
         v={d.streetRoad}

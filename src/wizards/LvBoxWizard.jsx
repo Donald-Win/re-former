@@ -8,6 +8,8 @@ import { PdfCanvasPreview } from '../shared/PdfCanvasPreview'
 import { PhotoAttachStep } from '../shared/PhotoAttachStep'
 import { appendPhotosToPdf } from '../shared/appendPhotosToPdf'
 import { sharePdf } from '../shared/sharePdf'
+import { getUserPrefs, saveUserPref } from '../shared/userPrefs'
+import { GpsLocationButton } from '../shared/GpsLocationButton'
 import { CoordOverlay } from '../shared/CoordOverlay'
 import { saveToHistory } from '../shared/jobHistory'
 import { JobHistoryPicker } from '../shared/JobHistoryPicker'
@@ -274,7 +276,8 @@ async function generateEdPdf(d, photos = []) {
 export default function LvBoxWizard({ onClose }) {
   const [step, setStep] = useState(0)
 
-  const [d, setD] = useState({
+  const { contractor: _contractor } = getUserPrefs()
+    const [d, setD] = useState({
     // Job Details
     npJobNumber:           '',
     projectName:           '',
@@ -283,7 +286,7 @@ export default function LvBoxWizard({ onClose }) {
     district:              '',
     pcoWONo:               '',
     ciwrNo:                '',
-    contractor:            '',
+    contractor:            _contractor,
     dateWorkCompleted:     '',
     signed:                '',
     // Box table rows
@@ -304,6 +307,7 @@ export default function LvBoxWizard({ onClose }) {
 
   const prevStepRef = useRef(step)
   const set    = (k, v) => setD(prev => ({ ...prev, [k]: v }))
+  React.useEffect(() => { saveUserPref('contractor', d.contractor) }, [d.contractor])
   const setRow = (i, k, v) => setD(prev => {
     const rows = prev.boxRows.map((r, idx) => idx === i ? { ...r, [k]: v } : r)
     return { ...prev, boxRows: rows }
@@ -389,6 +393,7 @@ export default function LvBoxWizard({ onClose }) {
         <WF label="PCo W/O No."  v={d.pcoWONo} set={v => set('pcoWONo', v)} accent={ED_GREEN} />
         <WF label="CIWR No."     v={d.ciwrNo}  set={v => set('ciwrNo',  v)} accent={ED_GREEN} />
       </div>
+      <GpsLocationButton accent={ED_GREEN} onLocation={loc => setD(p => ({...p, ...loc}))} />
       <WF label="No./Street/Road" v={d.streetRoad} set={v => set('streetRoad', v)} ph="123 Example Road" accent={ED_GREEN} />
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 14px' }}>
         <WF label="City / Town" v={d.cityTown} set={v => set('cityTown', v)} ph="Hamilton" accent={ED_GREEN} />

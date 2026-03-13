@@ -13,6 +13,8 @@ import { PdfCanvasPreview } from '../shared/PdfCanvasPreview'
 import { PhotoAttachStep } from '../shared/PhotoAttachStep'
 import { appendPhotosToPdf } from '../shared/appendPhotosToPdf'
 import { sharePdf } from '../shared/sharePdf'
+import { getUserPrefs, saveUserPref } from '../shared/userPrefs'
+import { GpsLocationButton } from '../shared/GpsLocationButton'
 import { CoordOverlay } from '../shared/CoordOverlay'
 
 const W_PURPLE = APP_ACCENT
@@ -300,12 +302,13 @@ function TransformerWizardApp({ onClose }) {
   const PHASES  = ['Three', 'One', 'SWER']
   const TX_TYPE = ['Bearer', 'Grnd Mount', 'Hanger', 'Pedestal']
 
+  const { contractor: _contractor, namePrint: _namePrint } = getUserPrefs()
   const [d, setD] = useState({
     streetRoad: '', cityTown: '', district: '',
+    contractor: _contractor, namePrint: _namePrint,
     npJobNumber: '', projectName: '',
     pcoWONo: '', ciwrNo: '',
-    contractor: '', dateWorkCompleted: '',
-    signed: '', namePrint: '',
+    dateWorkCompleted: '', signed: '',
     transformerSiteId: '', poleId: '',
     zoneSubstation: '', feederId: '',
     installationType: '', ownership: '', ownershipOther: '',
@@ -362,6 +365,8 @@ function TransformerWizardApp({ onClose }) {
   }
 
   const set   = k => v => setD(p => ({ ...p, [k]: v }))
+  React.useEffect(() => { saveUserPref('contractor', d.contractor) }, [d.contractor])
+  React.useEffect(() => { saveUserPref('namePrint', d.namePrint) }, [d.namePrint])
 
 
   const loadJobHistory = fields => {
@@ -419,6 +424,7 @@ function TransformerWizardApp({ onClose }) {
         <F label="PCo W/O No."  v={d.pcoWONo}  set={set('pcoWONo')} />
         <F label="CIWR No."     v={d.ciwrNo}   set={set('ciwrNo')} />
       </div>
+      <GpsLocationButton accent={G} onLocation={loc => setD(p => ({...p, ...loc}))} />
       <F label="No./Street/Road" v={d.streetRoad} set={set('streetRoad')} ph="123 Example Road" />
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 14px' }}>
         <F label="City / Town" v={d.cityTown} set={set('cityTown')} ph="Hamilton" />

@@ -8,6 +8,8 @@ import { PdfCanvasPreview } from '../shared/PdfCanvasPreview'
 import { PhotoAttachStep } from '../shared/PhotoAttachStep'
 import { appendPhotosToPdf } from '../shared/appendPhotosToPdf'
 import { sharePdf } from '../shared/sharePdf'
+import { getUserPrefs, saveUserPref } from '../shared/userPrefs'
+import { GpsLocationButton } from '../shared/GpsLocationButton'
 import { CoordOverlay } from '../shared/CoordOverlay'
 import { saveToHistory } from '../shared/jobHistory'
 import { JobHistoryPicker } from '../shared/JobHistoryPicker'
@@ -262,7 +264,8 @@ async function generateEbPdf(d, photos = []) {
 export default function ElecDistributionWizard({ onClose }) {
   const [step, setStep] = useState(0)
 
-  const [d, setD] = useState({
+  const { contractor: _contractor, namePrint: _namePrint } = getUserPrefs()
+    const [d, setD] = useState({
     // Standard job-history fields
     npJobNumber:          '',
     projectName:          '',
@@ -271,9 +274,9 @@ export default function ElecDistributionWizard({ onClose }) {
     streetRoad:           '',
     cityTown:             '',
     district:             '',
-    contractor:           '',
+    contractor:           _contractor,
     dateWorkCompleted:    '',
-    namePrint:            '',
+    namePrint:            _namePrint,
     signed:               '',
     // Distribution Main
     distributionMain:      '',
@@ -309,6 +312,8 @@ export default function ElecDistributionWizard({ onClose }) {
   const prevStepRef = useRef(step)
 
   const set = (k, v) => setD(prev => ({ ...prev, [k]: v }))
+  React.useEffect(() => { saveUserPref('contractor', d.contractor) }, [d.contractor])
+  React.useEffect(() => { saveUserPref('namePrint', d.namePrint) }, [d.namePrint])
 
   // Stable setRow — passed as prop to CableRow to avoid remounting
   const setRow = (i, k, v) => setD(prev => {
@@ -398,6 +403,7 @@ export default function ElecDistributionWizard({ onClose }) {
         <WF label="PCo W/O No." v={d.pcoWONo} set={v => set('pcoWONo', v)} accent={EB_ORANGE} />
         <WF label="CIWR No."    v={d.ciwrNo}  set={v => set('ciwrNo',  v)} accent={EB_ORANGE} />
       </div>
+      <GpsLocationButton accent={EB_ORANGE} onLocation={loc => setD(p => ({...p, ...loc}))} />
       <WF label="No./Street/Road" v={d.streetRoad} set={v => set('streetRoad', v)} ph="123 Example Road" accent={EB_ORANGE} />
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 14px' }}>
         <WF label="City / Town" v={d.cityTown} set={v => set('cityTown', v)} ph="Hamilton" accent={EB_ORANGE} />
