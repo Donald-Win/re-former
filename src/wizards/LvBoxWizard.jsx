@@ -307,9 +307,9 @@ export default function LvBoxWizard({ onClose }) {
 
   const prevStepRef = useRef(step)
   const set    = (k, v) => setD(prev => ({ ...prev, [k]: v }))
-  React.useEffect(() => { saveUserPref('contractor', d.contractor) }, [d.contractor])
-  React.useEffect(() => { if (d.signed) saveUserPref('signed', d.signed) }, [d.signed])
-  React.useEffect(() => { saveUserPref('dateWorkCompleted', d.dateWorkCompleted) }, [d.dateWorkCompleted])
+  useEffect(() => { saveUserPref('contractor', d.contractor) }, [d.contractor])
+  useEffect(() => { if (d.signed) saveUserPref('signed', d.signed) }, [d.signed])
+  useEffect(() => { saveUserPref('dateWorkCompleted', d.dateWorkCompleted) }, [d.dateWorkCompleted])
   const setRow = (i, k, v) => setD(prev => {
     const rows = prev.boxRows.map((r, idx) => idx === i ? { ...r, [k]: v } : r)
     return { ...prev, boxRows: rows }

@@ -312,10 +312,10 @@ export default function ElecDistributionWizard({ onClose }) {
   const prevStepRef = useRef(step)
 
   const set = (k, v) => setD(prev => ({ ...prev, [k]: v }))
-  React.useEffect(() => { saveUserPref('contractor', d.contractor) }, [d.contractor])
-  React.useEffect(() => { saveUserPref('namePrint', d.namePrint) }, [d.namePrint])
-  React.useEffect(() => { if (d.signed) saveUserPref('signed', d.signed) }, [d.signed])
-  React.useEffect(() => { saveUserPref('dateWorkCompleted', d.dateWorkCompleted) }, [d.dateWorkCompleted])
+  useEffect(() => { saveUserPref('contractor', d.contractor) }, [d.contractor])
+  useEffect(() => { saveUserPref('namePrint', d.namePrint) }, [d.namePrint])
+  useEffect(() => { if (d.signed) saveUserPref('signed', d.signed) }, [d.signed])
+  useEffect(() => { saveUserPref('dateWorkCompleted', d.dateWorkCompleted) }, [d.dateWorkCompleted])
 
   // Stable setRow — passed as prop to CableRow to avoid remounting
   const setRow = (i, k, v) => setD(prev => {
