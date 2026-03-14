@@ -354,33 +354,34 @@ function PoleRecordWizard({ onClose }) {
         const MATERIAL   = [["HDCu","HDCu"],["ACSR","ACSR"],["AAC","AAC"],["AAAC","AAAC"],["ABC","ABC"]]
         // ── Conductor quick-pick data ─────────────────────────────────────────
         const CU_SIZES = ['10mm²','16mm²','25mm²','35mm²','50mm²','70mm²','95mm²','120mm²','150mm²','185mm²','240mm²']
-        const ALI_CONDUCTORS = [
-          // AAC
-          {name:'Bee',type:'AAC'},{name:'Beetle',type:'AAC'},{name:'Butterfly',type:'AAC'},
-          {name:'Caterpillar',type:'AAC'},{name:'Centipede',type:'AAC'},{name:'Chafer',type:'AAC'},
-          {name:'Cockroach',type:'AAC'},{name:'Cricket',type:'AAC'},{name:'Fly',type:'AAC'},
-          {name:'Gnat',type:'AAC'},{name:'Grasshopper',type:'AAC'},{name:'Hornet',type:'AAC'},
-          {name:'Huhu',type:'AAC'},{name:'Kutu',type:'AAC'},{name:'Ladybird',type:'AAC'},
-          {name:'Mata',type:'AAC'},{name:'Moka',type:'AAC'},{name:'Namu',type:'AAC'},
-          {name:'Poko',type:'AAC'},{name:'Rango',type:'AAC'},{name:'Spider',type:'AAC'},
-          {name:'Wasp',type:'AAC'},{name:'Weke',type:'AAC'},{name:'Weta',type:'AAC'},
-          // ACSR
-          {name:'Coyote',type:'ACSR'},{name:'Dingo',type:'ACSR'},{name:'Dog',type:'ACSR'},
-          {name:'Ferret',type:'ACSR'},{name:'Fox',type:'ACSR'},{name:'Gopher',type:'ACSR'},
-          {name:'Hare',type:'ACSR'},{name:'Hyena',type:'ACSR'},{name:'Jaguar',type:'ACSR'},
-          {name:'Magpie',type:'ACSR'},{name:'Mink',type:'ACSR'},{name:'Moa',type:'ACSR'},
-          {name:'Petrel',type:'ACSR'},{name:'Rabbit',type:'ACSR'},{name:'Raccoon',type:'ACSR'},
-          {name:'Squirrel',type:'ACSR'},{name:'Swan',type:'ACSR'},{name:'Tiger',type:'ACSR'},
-          {name:'Waxwing',type:'ACSR'},{name:'Wolf',type:'ACSR'},{name:'Zebra',type:'ACSR'},
-          // AAAC
-          {name:'Argon',type:'AAAC'},{name:'Boron',type:'AAAC'},{name:'Chlorine',type:'AAAC'},
-          {name:'Chromium',type:'AAAC'},{name:'Fluorine',type:'AAAC'},{name:'Helium',type:'AAAC'},
-          {name:'Hydrogen',type:'AAAC'},{name:'Iodine',type:'AAAC'},{name:'Krypton',type:'AAAC'},
-          {name:'Lutelium',type:'AAAC'},{name:'Neon',type:'AAAC'},{name:'Nitrogen',type:'AAAC'},
-          {name:'Nobelium',type:'AAAC'},{name:'Oxygen',type:'AAAC'},{name:'Phosphorus',type:'AAAC'},
-          {name:'Selenium',type:'AAAC'},{name:'Silicon',type:'AAAC'},{name:'Sulphur',type:'AAAC'},
-          {name:'Xenon',type:'AAAC'},
+
+        const ALI_COMMON = ['Namu','Squirrel','Ferret','Flourine','Kutu','Iodine','Wasp']
+        const ALI_ALL = [
+          {name:'Argon',type:'AAAC'},{name:'Bee',type:'AAC'},{name:'Beetle',type:'AAC'},
+          {name:'Boron',type:'AAAC'},{name:'Butterfly',type:'AAC'},{name:'Caterpillar',type:'AAC'},
+          {name:'Centipede',type:'AAC'},{name:'Chafer',type:'AAC'},{name:'Chlorine',type:'AAAC'},
+          {name:'Chromium',type:'AAAC'},{name:'Cockroach',type:'AAC'},{name:'Coyote',type:'ACSR'},
+          {name:'Cricket',type:'AAC'},{name:'Dingo',type:'ACSR'},{name:'Dog',type:'ACSR'},
+          {name:'Ferret',type:'ACSR'},{name:'Flourine',type:'AAAC'},{name:'Fly',type:'AAC'},
+          {name:'Fox',type:'ACSR'},{name:'Gnat',type:'AAC'},{name:'Gopher',type:'ACSR'},
+          {name:'Grasshopper',type:'AAC'},{name:'Hare',type:'ACSR'},{name:'Helium',type:'AAAC'},
+          {name:'Hornet',type:'AAC'},{name:'Huhu',type:'AAC'},{name:'Hydrogen',type:'AAAC'},
+          {name:'Hyena',type:'ACSR'},{name:'Iodine',type:'AAAC'},{name:'Jaguar',type:'ACSR'},
+          {name:'Krypton',type:'AAAC'},{name:'Kutu',type:'AAC'},{name:'Ladybird',type:'AAC'},
+          {name:'Lutelium',type:'AAAC'},{name:'Magpie',type:'ACSR'},{name:'Mata',type:'AAC'},
+          {name:'Mink',type:'ACSR'},{name:'Moa',type:'ACSR'},{name:'Moka',type:'AAC'},
+          {name:'Namu',type:'AAC'},{name:'Neon',type:'AAAC'},{name:'Nitrogen',type:'AAAC'},
+          {name:'Nobelium',type:'AAAC'},{name:'Oxygen',type:'AAAC'},{name:'Petrel',type:'ACSR'},
+          {name:'Phosphorus',type:'AAAC'},{name:'Poko',type:'AAC'},{name:'Rabbit',type:'ACSR'},
+          {name:'Raccoon',type:'ACSR'},{name:'Rango',type:'AAC'},{name:'Selenium',type:'AAAC'},
+          {name:'Silicon',type:'AAAC'},{name:'Spider',type:'AAC'},{name:'Squirrel',type:'ACSR'},
+          {name:'Sulphur',type:'AAAC'},{name:'Swan',type:'ACSR'},{name:'Tiger',type:'ACSR'},
+          {name:'Wasp',type:'AAC'},{name:'Waxwing',type:'ACSR'},{name:'Weke',type:'AAC'},
+          {name:'Weta',type:'AAC'},{name:'Wolf',type:'ACSR'},{name:'Xenon',type:'AAAC'},
+          {name:'Zebra',type:'ACSR'},
         ]
+        const ALI_COMMON_ITEMS = ALI_COMMON.map(n => ALI_ALL.find(c => c.name === n)).filter(Boolean)
+        const ALI_REST = ALI_ALL.filter(c => !ALI_COMMON.includes(c.name))
 
         // ── Per-row picker UI ─────────────────────────────────────────────────
         const pathBtn = (label, active, onClick, color='#6366f1') => (
@@ -411,7 +412,6 @@ function PoleRecordWizard({ onClose }) {
             return {...p, conductors: conds}
           })
 
-          // ── Summary bar shown when a path is complete ──────────────────────
           const summary = c.size && c.material && c.insulation ? (
             <div style={{
               background:'#eef2ff', border:`1px solid ${W_PURPLE}`, borderRadius:7,
@@ -424,28 +424,26 @@ function PoleRecordWizard({ onClose }) {
             </div>
           ) : null
 
-          // ── Path chooser ───────────────────────────────────────────────────
+          const pathRow = (active) => (
+            <div style={{display:'flex',gap:6,marginBottom:8}}>
+              {pathBtn('Cu', active==='cu', ()=>setMulti({size:'',material:'',insulation:'',picker:'cu'}), '#b45309')}
+              {pathBtn('Ali', active==='ali', ()=>setMulti({size:'',material:'',insulation:'',picker:'ali'}), '#0369a1')}
+              {pathBtn('Manual', active==='manual', ()=>setMulti({size:'',material:'',insulation:'',picker:'manual'}), '#6b7280')}
+            </div>
+          )
+
           if (!picker) return (
             <div>
               {summary}
               <div style={{fontSize:11,color:'#888',marginBottom:5}}>Select conductor type</div>
-              <div style={{display:'flex',gap:6}}>
-                {pathBtn('⚡ Cu', false, ()=>setField('picker','cu'), '#b45309')}
-                {pathBtn('🔩 Ali', false, ()=>setField('picker','ali'), '#0369a1')}
-                {pathBtn('✏️ Manual', false, ()=>setField('picker','manual'), '#6b7280')}
-              </div>
+              {pathRow(null)}
             </div>
           )
 
-          // ── Cu path ───────────────────────────────────────────────────────
           if (picker === 'cu') return (
             <div>
               {summary}
-              <div style={{display:'flex',gap:6,marginBottom:8}}>
-                {pathBtn('⚡ Cu', true, ()=>{}, '#b45309')}
-                {pathBtn('🔩 Ali', false, ()=>setMulti({size:'',material:'',insulation:'',picker:'ali'}), '#0369a1')}
-                {pathBtn('✏️ Manual', false, ()=>setMulti({size:'',material:'',insulation:'',picker:'manual'}), '#6b7280')}
-              </div>
+              {pathRow('cu')}
               {!c.size && <>
                 <div style={{fontSize:11,color:'#888',marginBottom:5}}>Select size</div>
                 <div style={{display:'flex',flexWrap:'wrap',gap:5,marginBottom:8}}>
@@ -467,31 +465,29 @@ function PoleRecordWizard({ onClose }) {
             </div>
           )
 
-          // ── Ali path ──────────────────────────────────────────────────────
           if (picker === 'ali') return (
             <div>
               {summary}
-              <div style={{display:'flex',gap:6,marginBottom:8}}>
-                {pathBtn('⚡ Cu', false, ()=>setMulti({size:'',material:'',insulation:'',picker:'cu'}), '#b45309')}
-                {pathBtn('🔩 Ali', true, ()=>{}, '#0369a1')}
-                {pathBtn('✏️ Manual', false, ()=>setMulti({size:'',material:'',insulation:'',picker:'manual'}), '#6b7280')}
-              </div>
+              {pathRow('ali')}
               {!c.size && <>
-                <div style={{fontSize:11,color:'#888',marginBottom:5}}>Select conductor</div>
-                <div style={{maxHeight:180,overflowY:'auto',padding:'2px 0'}}>
-                  {['AAC','ACSR','AAAC'].map(type=>(
-                    <div key={type} style={{marginBottom:8}}>
-                      <div style={{fontSize:10,fontWeight:700,color:'#888',marginBottom:4,letterSpacing:'0.05em'}}>{type}</div>
-                      <div style={{display:'flex',flexWrap:'wrap',gap:4}}>
-                        {ALI_CONDUCTORS.filter(c=>c.type===type).map(cd=>(
-                          <button key={cd.name} type="button"
-                            onClick={()=>setMulti({size:cd.name,material:cd.type})}
-                            style={{padding:'5px 9px',borderRadius:6,border:'1.5px solid #bae6fd',
-                              background:'#f0f9ff',color:'#075985',fontFamily:'inherit',
-                              fontSize:12,fontWeight:600,cursor:'pointer'}}>{cd.name}</button>
-                        ))}
-                      </div>
-                    </div>
+                <div style={{fontSize:11,color:'#888',marginBottom:5}}>Common</div>
+                <div style={{display:'flex',flexWrap:'wrap',gap:4,marginBottom:10}}>
+                  {ALI_COMMON_ITEMS.map(cd=>(
+                    <button key={cd.name} type="button"
+                      onClick={()=>setMulti({size:cd.name,material:cd.type})}
+                      style={{padding:'6px 10px',borderRadius:6,border:'2px solid #0369a1',
+                        background:'#0369a1',color:'#fff',fontFamily:'inherit',
+                        fontSize:12,fontWeight:700,cursor:'pointer'}}>{cd.name}</button>
+                  ))}
+                </div>
+                <div style={{height:1,background:'#e5e7eb',marginBottom:8}} />
+                <div style={{display:'flex',flexWrap:'wrap',gap:4,maxHeight:160,overflowY:'auto'}}>
+                  {ALI_REST.map(cd=>(
+                    <button key={cd.name} type="button"
+                      onClick={()=>setMulti({size:cd.name,material:cd.type})}
+                      style={{padding:'5px 9px',borderRadius:6,border:'1.5px solid #bae6fd',
+                        background:'#f0f9ff',color:'#075985',fontFamily:'inherit',
+                        fontSize:12,fontWeight:600,cursor:'pointer'}}>{cd.name}</button>
                   ))}
                 </div>
               </>}
@@ -505,20 +501,16 @@ function PoleRecordWizard({ onClose }) {
             </div>
           )
 
-          // ── Manual path ───────────────────────────────────────────────────
+          // Manual — plain text inputs, no dropdowns
           return (
             <div>
               {summary}
-              <div style={{display:'flex',gap:6,marginBottom:8}}>
-                {pathBtn('⚡ Cu', false, ()=>setMulti({size:'',material:'',insulation:'',picker:'cu'}), '#b45309')}
-                {pathBtn('🔩 Ali', false, ()=>setMulti({size:'',material:'',insulation:'',picker:'ali'}), '#0369a1')}
-                {pathBtn('✏️ Manual', true, ()=>{}, '#6b7280')}
-              </div>
+              {pathRow('manual')}
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                <WF label="Conductor Size" v={c.size} set={v=>setField('size',v)} ph="e.g. 95mm²" />
-                <WSel label="Material" value={c.material} onChange={v=>setField('material',v)} options={MATERIAL} />
+                <WF label="Size" v={c.size} set={v=>setField('size',v)} ph="e.g. 95mm²" />
+                <WF label="Material" v={c.material} set={v=>setField('material',v)} ph="e.g. ACSR" />
               </div>
-              <WSel label="Insulation Type" value={c.insulation} onChange={v=>setField('insulation',v)} options={INSULATION} />
+              <WF label="Insulation" v={c.insulation} set={v=>setField('insulation',v)} ph="e.g. Bare, PVC, XLPE" />
             </div>
           )
         }
