@@ -79,9 +79,16 @@ export function SignaturePad({ value, onChange, accent = APP_ACCENT }) {
     const ctx    = canvas.getContext('2d')
     const pos    = getPos(e, canvas)
     hasMoved.current = true
+
+    // Quadratic Bézier through the midpoint between the last two positions
+    // produces a smooth curve rather than jagged straight-line segments.
+    const mid = {
+      x: (lastPos.current.x + pos.x) / 2,
+      y: (lastPos.current.y + pos.y) / 2,
+    }
     ctx.beginPath()
     ctx.moveTo(lastPos.current.x, lastPos.current.y)
-    ctx.lineTo(pos.x, pos.y)
+    ctx.quadraticCurveTo(lastPos.current.x, lastPos.current.y, mid.x, mid.y)
     ctx.strokeStyle = '#1a1aff'
     ctx.lineWidth   = 2
     ctx.lineCap     = 'round'
