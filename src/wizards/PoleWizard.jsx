@@ -556,11 +556,17 @@ function PoleRecordWizard({ onClose }) {
         const LEVELS   = [["1","1"],["2","2"],["3","3"],["4","4"],["5","5"],["6","6"],["7","7"]]
         const EN       = [["E","Existing (E)"],["N","New (N)"]]
         const VOLTAGE  = [["LV","LV"],["LVTX","LVTX"],["11","11"],["22","22"],["33","33"],["66","66"]]
-        const ARMS     = [["1","1"],["2","2"]]
+        const ARMS     = [["1","Single"],["2","Double"]]
+        const END_SIZE = [
+          ["A","A — 75×100mm"],
+          ["B","B — 100×100mm"],
+          ["D","D — 150×100mm"],
+          ["Z","Z — 75×75mm Angle Iron"],
+        ]
         const MATERIAL = [["T","Timber (T)"],["S","Steel (S)"],["C","Composite (C)"]]
         return <>
           <div style={{background:"#fffff0",border:"1px solid #e0e000",borderRadius:8,padding:9,marginBottom:12,fontSize:11,color:"#555"}}>
-            <b>End Size:</b> B=100×100, D=100×150 | <b>Length:</b> 20=2m, 23=2.3m<br/>
+            <b>Length:</b> enter in code format, e.g. 20=2m, 23=2.3m<br/>
             <b>Insulators:</b> PN=Pin(LV), PS=Post(HV), TT=Term-Term, DP=Delta Post, EDO
           </div>
           <div style={{fontWeight:700,fontSize:14,marginBottom:8,color:"#333"}}>Crossarms</div>
@@ -576,14 +582,18 @@ function PoleRecordWizard({ onClose }) {
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
                   <WSel label="Level" value={c.level} onChange={v=>setCA(i,"level",v)} options={LEVELS} />
                   <WSel label="Existing / New" value={c.existing} onChange={v=>setCA(i,"existing",v)} options={EN} />
-                  <WF label="End Size" v={c.endSize} set={v=>setCA(i,"endSize",v)} ph="B/D" />
-                  <WF label="Length" v={c.length} set={v=>setCA(i,"length",v)} ph="20/23" />
                 </div>
                 <WSel label="Rated Voltage" value={c.voltage} onChange={v=>setCA(i,"voltage",v)} options={VOLTAGE} />
-                <WSel label="# Arms" value={c.arms} onChange={v=>setCA(i,"arms",v)} options={ARMS} />
-                <WF label="Insulator Type" v={c.insulatorType} set={v=>setCA(i,"insulatorType",v)} ph="PN/PS/TT/DP/EDO" />
-                <WSel label="Arm Material" value={c.armMaterial} onChange={v=>setCA(i,"armMaterial",v)} options={MATERIAL} />
-                <WF label="# Wires" v={c.wires} set={v=>setCA(i,"wires",v)} ph="2–6" />
+                <div style={{height:1,background:'#e5e7eb',margin:'8px 0'}} />
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                  <WSel label="End Size" value={c.endSize} onChange={v=>setCA(i,"endSize",v)} options={END_SIZE} />
+                  <WF label="Length" v={c.length} set={v=>setCA(i,"length",v.replace(/\D/g,''))} ph="e.g. 20" type="number" />
+                  <WSel label="Arms" value={c.arms} onChange={v=>setCA(i,"arms",v)} options={ARMS} />
+                  <WSel label="Arm Material" value={c.armMaterial} onChange={v=>setCA(i,"armMaterial",v)} options={MATERIAL} />
+                </div>
+                <div style={{height:1,background:'#e5e7eb',margin:'8px 0'}} />
+                <WF label="Insulator Type" v={c.insulatorType} set={v=>setCA(i,"insulatorType",v)} ph="PN / PS / TT / DP / EDO" />
+                <WF label="# Wires" v={c.wires} set={v=>setCA(i,"wires",v.replace(/\D/g,''))} ph="e.g. 3" type="number" />
                 {isLastRow&&d.crossarms.length<7&&<button onClick={()=>setD(p=>({...p,crossarms:[...p.crossarms,{level:String(p.crossarms.length+1),existing:"",voltage:"",endSize:"",length:"",arms:"",insulatorType:"",armMaterial:"",wires:""}]}))} style={{marginTop:10,padding:"10px 16px",borderRadius:8,border:"none",background:W_PURPLE,color:"#fff",fontFamily:"inherit",fontSize:12,fontWeight:700,cursor:"pointer"}}>+ Add Another Row</button>}
               </div>:null
             })
