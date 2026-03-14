@@ -7,6 +7,7 @@ export function SignaturePad({ value, onChange, accent = APP_ACCENT }) {
   const canvasRef = useRef(null)
   const drawing   = useRef(false)
   const lastPos   = useRef(null)
+  const hasMoved  = useRef(false)
 
   // ── Size canvas to physical pixels; re-size on orientation change ───
   useEffect(() => {
@@ -67,6 +68,7 @@ export function SignaturePad({ value, onChange, accent = APP_ACCENT }) {
   const startDraw = e => {
     e.preventDefault()
     drawing.current = true
+    hasMoved.current = false
     lastPos.current = getPos(e, canvasRef.current)
   }
 
@@ -76,6 +78,7 @@ export function SignaturePad({ value, onChange, accent = APP_ACCENT }) {
     const canvas = canvasRef.current
     const ctx    = canvas.getContext('2d')
     const pos    = getPos(e, canvas)
+    hasMoved.current = true
     ctx.beginPath()
     ctx.moveTo(lastPos.current.x, lastPos.current.y)
     ctx.lineTo(pos.x, pos.y)
@@ -90,13 +93,26 @@ export function SignaturePad({ value, onChange, accent = APP_ACCENT }) {
   const endDraw = () => {
     if (!drawing.current) return
     drawing.current = false
-    lastPos.current = null
 
     const canvas = canvasRef.current
-    const dpr    = window.devicePixelRatio || 1
-    const W      = canvas.width   // physical pixels
-    const H      = canvas.height
-    const data   = canvas.getContext('2d').getImageData(0, 0, W, H).data
+    const ctx    = canvas.getContext('2d')
+
+    // If the finger/mouse never moved, draw a dot at the tap position
+    if (!hasMoved.current && lastPos.current) {
+      const { x, y } = lastPos.current
+      ctx.beginPath()
+      ctx.arc(x, y, 1.5, 0, Math.PI * 2)
+      ctx.fillStyle = '#1a1aff'
+      ctx.fill()
+    }
+
+    lastPos.current = null
+    hasMoved.current = false
+
+    const dpr  = window.devicePixelRatio || 1
+    const W    = canvas.width   // physical pixels
+    const H    = canvas.height
+    const data = canvas.getContext('2d').getImageData(0, 0, W, H).data
 
     // Find tight bounding box in physical pixels
     let minX = W, minY = H, maxX = 0, maxY = 0
@@ -111,7 +127,8 @@ export function SignaturePad({ value, onChange, accent = APP_ACCENT }) {
       }
     }
 
-    if (maxX > minX && maxY > minY) {
+    // Use >= so single-pixel dots and perfectly straight strokes are not discarded
+    if (minX <= maxX && minY <= maxY) {
       const pad = Math.round(4 * dpr)
       const tc  = document.createElement('canvas')
       tc.width  = maxX - minX + pad * 2
