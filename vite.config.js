@@ -45,7 +45,8 @@ export default defineConfig({
 
       // ── Precache glob config ──────────────────────────────────────────────
       injectManifest: {
-        globPatterns: ['**/*.{js,mjs,css,html,ico,png,svg,woff2}'],
+        // ttf: the Unicode PDF font (public/fonts) must be precached for offline PDF generation.
+        globPatterns: ['**/*.{js,mjs,css,html,ico,png,svg,woff2,ttf}'],
         // Form PDFs are served by the NetworkFirst runtime cache in sw.js.
         globIgnores: ['**/forms/**'],
       },
@@ -83,15 +84,19 @@ export default defineConfig({
     // pdf-lib and pdfjs-dist are unavoidably large.
     chunkSizeWarningLimit: 1500,
 
-    rollupOptions: {
+    // Vite 8 uses Rolldown: the Rollup-era object-form `manualChunks` was
+    // removed, and `rollupOptions` is now `rolldownOptions`. Vendor chunking
+    // is expressed with `codeSplitting.groups` instead (first match wins).
+    rolldownOptions: {
       output: {
-        // ── Manual chunk splitting ────────────────────────────────────────────
-        manualChunks: {
-          'vendor-react':   ['react', 'react-dom'],
-          'vendor-pdf-lib': ['pdf-lib'],
-          'vendor-pdfjs':   ['pdfjs-dist'],
-          'vendor-idb':     ['idb-keyval'],
-          'vendor-lucide':  ['lucide-react'],
+        codeSplitting: {
+          groups: [
+            { name: 'vendor-react',   test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/ },
+            { name: 'vendor-pdf-lib', test: /node_modules[\\/]pdf-lib[\\/]/ },
+            { name: 'vendor-pdfjs',   test: /node_modules[\\/]pdfjs-dist[\\/]/ },
+            { name: 'vendor-idb',     test: /node_modules[\\/]idb-keyval[\\/]/ },
+            { name: 'vendor-lucide',  test: /node_modules[\\/]lucide-react[\\/]/ },
+          ],
         },
       },
     },

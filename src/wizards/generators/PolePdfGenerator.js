@@ -30,8 +30,8 @@
  * @returns {Promise<Uint8Array>}
  */
 
-import { PDFDocument, StandardFonts } from 'pdf-lib'
-import { fetchPdfTemplate, createPageDrawer, DEFAULT_INK, A4_HEIGHT } from '../../shared/pdfDrawUtils'
+import { PDFDocument } from 'pdf-lib'
+import { embedAppFont, fetchPdfTemplate, createPageDrawer, DEFAULT_INK, A4_HEIGHT } from '../../shared/pdfDrawUtils'
 import { renderFields, renderGridRow } from '../../shared/pdfFieldRenderer'
 import { appendPhotosToPdf } from '../../shared/appendPhotosToPdf'
 
@@ -242,7 +242,7 @@ export const GRIDS = {
 export async function generatePolePdf(d, photos = []) {
   const templateBytes = await fetchPdfTemplate(getTemplateUrl())
   const pdfDoc        = await PDFDocument.load(templateBytes)
-  const font          = await pdfDoc.embedFont(StandardFonts.Helvetica)
+  const font          = await embedAppFont(pdfDoc)
   const [p1, p2, p3]  = pdfDoc.getPages()
 
   const draw1 = createPageDrawer(p1, font, DEFAULT_INK, A4_HEIGHT)
@@ -287,3 +287,4 @@ export async function generatePolePdf(d, photos = []) {
 
   return new Uint8Array(await pdfDoc.save())
 }
+

@@ -37,7 +37,8 @@
  * conversion.
  */
 
-import { rgb } from 'pdf-lib'
+import { rgb, StandardFonts } from 'pdf-lib'
+import fontkit from '@pdf-lib/fontkit'
 
 // ── Default ink colour — deep navy, matches premium ballpoint blue ────────────
 export const DEFAULT_INK = rgb(0 / 255, 20 / 255, 160 / 255)
@@ -117,6 +118,55 @@ export function clearPdfTemplateCache(url) {
   } else {
     Object.keys(templateCache).forEach(k => delete templateCache[k])
     Object.keys(templateInFlight).forEach(k => delete templateInFlight[k])
+  }
+}
+
+// ── Unicode font embedding (v2.22.1) ──────────────────────────────────────────
+// pdf-lib's built-in StandardFonts.Helvetica only supports WinAnsi encoding,
+// so any character outside it — notably the macron vowels (ā ē ī ō ū) found in
+// many NZ place and road names — makes drawText throw and the whole PDF
+// generation fail. Every generator now embeds Liberation Sans instead: it has
+// the same metrics as Helvetica/Arial (so text widths, wrapping and every
+// calibrated coordinate stay exactly where they were) and full Latin Extended
+// coverage. Licensed under the SIL Open Font License 1.1 (see
+// public/fonts/README.md).
+//
+// The TTF is fetched once per session (shared in-flight promise, same
+// pattern as fetchPdfTemplate) and embedded with subset:true so each PDF only
+// carries the glyphs it actually uses. The file is precached by the service
+// worker (see vite.config.js globPatterns), so this works offline.
+const APP_FONT_FILE = 'fonts/LiberationSans-Regular.ttf'
+let appFontBytesPromise = null
+
+function loadAppFontBytes() {
+  if (!appFontBytesPromise) {
+    appFontBytesPromise = fetch(`${import.meta.env.BASE_URL}${APP_FONT_FILE}`)
+      .then(res => {
+        if (!res.ok) throw new Error(`embedAppFont: HTTP ${res.status} for ${APP_FONT_FILE}`)
+        return res.arrayBuffer()
+      })
+      .then(buf => new Uint8Array(buf))
+      .catch(err => { appFontBytesPromise = null; throw err }) // allow retry next call
+  }
+  return appFontBytesPromise
+}
+
+/**
+ * Embed the app's Unicode-capable font into `pdfDoc` and return the PDFFont.
+ * Drop-in replacement for `pdfDoc.embedFont(StandardFonts.Helvetica)`.
+ *
+ * If the font file can't be loaded for any reason, falls back to Helvetica
+ * so a form without macrons still generates (a macron would then throw, as
+ * it did before this helper existed).
+ */
+export async function embedAppFont(pdfDoc) {
+  try {
+    const bytes = await loadAppFontBytes()
+    pdfDoc.registerFontkit(fontkit)
+    return await pdfDoc.embedFont(bytes, { subset: true })
+  } catch (err) {
+    console.warn('[pdfDrawUtils] Unicode font unavailable — falling back to Helvetica:', err)
+    return pdfDoc.embedFont(StandardFonts.Helvetica)
   }
 }
 
@@ -521,3 +571,4 @@ export function createPageDrawer(page, font, color = DEFAULT_INK, pageHeight = A
       wrapText(text, maxWidth, font, fontSize),
   }
 }
+

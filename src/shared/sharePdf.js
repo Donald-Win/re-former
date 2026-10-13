@@ -75,7 +75,7 @@ function showDebug(lines) {
  * @returns {string}         e.g. "Pyes Pa Blitz - TC1234567 - Pole Record.pdf"
  */
 export function buildPdfFilename(...parts) {
-  const sanitise = s => (s || '').replace(/[^a-zA-Z0-9 _-]/g, '').trim()
+  const sanitise = s => (s || '').replace(/[^\p{L}\p{N} _-]/gu, '').trim()
   return parts.map(sanitise).filter(Boolean).join(' - ') + '.pdf'
 }
 
@@ -155,3 +155,4 @@ export async function sharePdf(pdfBytes, filename, blobUrl, onSuccess) {
     releaseOwnUrl()
   }
 }
+

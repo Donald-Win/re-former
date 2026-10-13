@@ -29,8 +29,8 @@
  * @returns {Promise<Uint8Array>}
  */
 
-import { PDFDocument, StandardFonts } from 'pdf-lib'
-import { fetchPdfTemplate, createPageDrawer, DEFAULT_INK, A4_HEIGHT } from '../../shared/pdfDrawUtils'
+import { PDFDocument } from 'pdf-lib'
+import { embedAppFont, fetchPdfTemplate, createPageDrawer, DEFAULT_INK, A4_HEIGHT } from '../../shared/pdfDrawUtils'
 import { renderFields, renderGridRow } from '../../shared/pdfFieldRenderer'
 import { appendPhotosToPdf } from '../../shared/appendPhotosToPdf'
 
@@ -158,7 +158,7 @@ export const GRIDS = {
 export async function generateEEPdf(d, photos = []) {
   const templateBytes = await fetchPdfTemplate(getTemplateUrl())
   const pdfDoc        = await PDFDocument.load(templateBytes)
-  const font          = await pdfDoc.embedFont(StandardFonts.Helvetica)
+  const font          = await embedAppFont(pdfDoc)
   const pages         = pdfDoc.getPages()
   const p1            = pages[0]
   const p2            = pages.length > 1 ? pages[1] : null
@@ -193,3 +193,4 @@ export async function generateEEPdf(d, photos = []) {
 
   return new Uint8Array(await pdfDoc.save())
 }
+
