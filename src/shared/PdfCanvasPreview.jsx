@@ -22,6 +22,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { pdfjsLib } from './pdfjsInit'
 
+// pdfjs-dist v6 removed PDFDocumentProxy.destroy(): the *loading task* owns
+// teardown of the document and its worker. Never throws, never leaves an
+// unhandled rejection.
+const destroyTask = (task) => {
+  try { Promise.resolve(task?.destroy()).catch(() => {}) } catch (_) { /* already gone */ }
+}
+
 export function PdfCanvasPreview({ pdfBytes }) {
   const containerRef  = useRef(null)
   const [status, setStatus] = useState('idle') // 'idle' | 'rendering' | 'done' | 'error'
@@ -32,6 +39,7 @@ export function PdfCanvasPreview({ pdfBytes }) {
 
     let cancelled = false
     let pdfDoc    = null
+    let task      = null
 
     // ── Immediately clear any canvases from a previous render ───────────────
     container.innerHTML = ''
@@ -40,9 +48,9 @@ export function PdfCanvasPreview({ pdfBytes }) {
     ;(async () => {
       try {
         // Pass a copy so pdf.js can't accidentally transfer/mutate our bytes
-        const task = pdfjsLib.getDocument({ data: pdfBytes.slice() })
+        task = pdfjsLib.getDocument({ data: pdfBytes.slice() })
         pdfDoc = await task.promise
-        if (cancelled) { pdfDoc.destroy(); return }
+        if (cancelled) { destroyTask(task); task = null; return }
 
         const total = pdfDoc.numPages
 
@@ -93,7 +101,8 @@ export function PdfCanvasPreview({ pdfBytes }) {
 
         if (!cancelled) {
           setStatus('done')
-          pdfDoc.destroy()
+          destroyTask(task)
+          task = null
           pdfDoc = null
         }
 
@@ -108,8 +117,9 @@ export function PdfCanvasPreview({ pdfBytes }) {
     // ── Cleanup: cancel render, destroy doc, wipe canvases ──────────────────
     return () => {
       cancelled = true
-      if (pdfDoc) {
-        try { pdfDoc.destroy() } catch (_) {}
+      if (task) {
+        destroyTask(task)
+        task = null
         pdfDoc = null
       }
       container.innerHTML = ''
@@ -138,3 +148,4 @@ export function PdfCanvasPreview({ pdfBytes }) {
     </div>
   )
 }
+

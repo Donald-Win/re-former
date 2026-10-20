@@ -13,6 +13,28 @@
 
 export const CHANGELOGS = [
   {
+    version: '2.24.0',
+    changes: [
+      {
+        heading: 'Re-order photos before printing',
+        detail: "Each attached photo now shows its page number with small ‹ › buttons to move it earlier or later. Photos go into the PDF in the order shown, so you can fix the order without removing and re-adding them.",
+      },
+    ],
+  },
+  {
+    version: '2.23.0',
+    changes: [
+      {
+        heading: 'Back up and restore your data',
+        detail: "My Details (⚙️) now has a Backup & Restore section. \"Back up my data\" saves your drafts, projects and saved details (including your signature) into one file you can keep in Files, email to yourself, or move to a new device. \"Restore from backup\" loads that file back in — handy if you replace or reset an iPad. Restoring adds to what's already on the device and overwrites anything with the same name.",
+      },
+      {
+        heading: 'Pole Record — \"Other\" pole type now selectable',
+        detail: "The Pole Record's pole type list was missing an \"Other\" option, so the \"Specify Type\" box could never appear. \"Other\" is now in the list, and whatever you type is printed on the form.",
+      },
+    ],
+  },
+  {
     version: '2.22.1',
     changes: [
       {
@@ -26,7 +48,7 @@ export const CHANGELOGS = [
     changes: [
       {
         heading: 'New optional "Map Number" field',
-        detail: "You'll notice a new Map Number field on the job details step of every form. It's optional — fill it in if you use one, and leave it blank if you don't. (May be used for future features)",
+        detail: "You'll notice a new Map Number field on the job details step of every form. It's optional — fill it in if you use one, and leave it blank if you don't.",
       },
     ],
   },

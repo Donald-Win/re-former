@@ -156,6 +156,25 @@ export function PhotoAttachStep({ photos = [], onChange, accent = '#4f46e5' }) {
     onChange(prev => prev.filter((_, i) => i !== idx))
   }
 
+  // Swap a photo with its neighbour. Photos are appended to the PDF in this
+  // exact order (one per page), so the order shown here IS the page order.
+  const movePhoto = (idx, dir) => {
+    onChange(prev => {
+      const target = idx + dir
+      if (target < 0 || target >= prev.length) return prev
+      const next = [...prev]
+      ;[next[idx], next[target]] = [next[target], next[idx]]
+      return next
+    })
+  }
+
+  const arrowBtn = (disabled) => ({
+    background: 'rgba(0,0,0,0.65)', border: 'none', borderRadius: '50%',
+    width: 26, height: 26, padding: 0, color: '#fff', fontSize: 15, lineHeight: 1,
+    cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.3 : 1,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+  })
+
   return (
     <div>
       <p style={{ margin: '0 0 14px', fontSize: 13, color: '#6b7280', lineHeight: 1.5 }}>
@@ -252,6 +271,20 @@ export function PhotoAttachStep({ photos = [], onChange, accent = '#4f46e5' }) {
                 >
                   <X size={14} />
                 </button>
+                {/* Page order badge + move earlier / later */}
+                <div style={{
+                  position: 'absolute', top: 5, left: 5,
+                  display: 'flex', alignItems: 'center', gap: 4,
+                }}>
+                  <button onClick={() => movePhoto(idx, -1)} disabled={idx === 0}
+                    aria-label="Move earlier" style={arrowBtn(idx === 0)}>‹</button>
+                  <span style={{
+                    background: accent, color: '#fff', borderRadius: 10,
+                    fontSize: 11, fontWeight: 700, padding: '3px 8px', minWidth: 18, textAlign: 'center',
+                  }}>{idx + 1}</span>
+                  <button onClick={() => movePhoto(idx, 1)} disabled={idx === photos.length - 1}
+                    aria-label="Move later" style={arrowBtn(idx === photos.length - 1)}>›</button>
+                </div>
                 {/* Filename label */}
                 <div style={{
                   position: 'absolute',
@@ -283,10 +316,11 @@ export function PhotoAttachStep({ photos = [], onChange, accent = '#4f46e5' }) {
             fontWeight: 600,
             textAlign: 'center',
           }}>
-            {photos.length} photo{photos.length !== 1 ? 's' : ''} will be appended to the PDF
+            {photos.length} photo{photos.length !== 1 ? 's' : ''} will be appended to the PDF, in the order shown
           </div>
         </>
       )}
     </div>
   )
 }
+

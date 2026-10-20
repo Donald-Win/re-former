@@ -38,6 +38,13 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { pdfjsLib } from './pdfjsInit'
+
+// pdfjs-dist v6 removed PDFDocumentProxy.destroy(): the *loading task* owns
+// teardown of the document and its worker. Never throws, never leaves an
+// unhandled rejection.
+const destroyTask = (task) => {
+  try { Promise.resolve(task?.destroy()).catch(() => {}) } catch (_) { /* already gone */ }
+}
 import { APP_ACCENT, APP_YELLOW } from './constants'
 
 // ── Mode definitions ──────────────────────────────────────────────────────────
@@ -119,6 +126,7 @@ export function CoordOverlay({ pdfBytes, page = 1 }) {
   // PDF document / page handles — loaded once per (pdfBytes, page), then
   // re-rendered at different scales as the user zooms (no re-parsing).
   const pdfDocRef    = useRef(null)
+  const pdfTaskRef   = useRef(null) // loading task — owns teardown (see destroyTask)
   const pdfPageRef   = useRef(null)
   const natRef       = useRef({ width: 0, height: 0 })
 
@@ -185,14 +193,17 @@ export function CoordOverlay({ pdfBytes, page = 1 }) {
       if (!pdfBytes) return
       try {
         if (pdfPageRef.current) { try { pdfPageRef.current.cleanup() } catch (_) {} ; pdfPageRef.current = null }
-        if (pdfDocRef.current)  { try { pdfDocRef.current.destroy() } catch (_) {} ; pdfDocRef.current = null }
+        if (pdfTaskRef.current) { destroyTask(pdfTaskRef.current); pdfTaskRef.current = null }
+        pdfDocRef.current = null
 
-        const pdf = await pdfjsLib.getDocument({ data: pdfBytes.slice() }).promise
-        if (cancelledRef.current) { pdf.destroy(); return }
+        const task = pdfjsLib.getDocument({ data: pdfBytes.slice() })
+        pdfTaskRef.current = task
+        const pdf = await task.promise
+        if (cancelledRef.current) { destroyTask(task); pdfTaskRef.current = null; return }
         pdfDocRef.current = pdf
 
         const pg = await pdf.getPage(page)
-        if (cancelledRef.current) { pg.cleanup(); pdf.destroy(); return }
+        if (cancelledRef.current) { pg.cleanup(); destroyTask(task); pdfTaskRef.current = null; return }
         pdfPageRef.current = pg
 
         const nat = pg.getViewport({ scale: 1.0 })
@@ -208,7 +219,8 @@ export function CoordOverlay({ pdfBytes, page = 1 }) {
       cancelledRef.current = true
       renderingRef.current = false
       if (pdfPageRef.current) { try { pdfPageRef.current.cleanup() } catch (_) {} ; pdfPageRef.current = null }
-      if (pdfDocRef.current)  { try { pdfDocRef.current.destroy() } catch (_) {} ; pdfDocRef.current = null }
+      if (pdfTaskRef.current) { destroyTask(pdfTaskRef.current); pdfTaskRef.current = null }
+      pdfDocRef.current = null
     }
   }, [pdfBytes, page, drawAtZoom])
 
@@ -648,3 +660,4 @@ function NumberBadge({ x, y, n, color }) {
     </div>
   )
 }
+

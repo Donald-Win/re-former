@@ -162,6 +162,35 @@ export async function updateDraft(id, { name, step, data, photos }) {
 }
 
 /**
+ * Returns every draft for every form, newest first. Used by Backup & Restore
+ * (see backupData.js) — the per-form listDrafts() above is what the picker uses.
+ */
+export async function listAllDrafts() {
+  await migrateFromLocalStorage()
+  const allKeys = await keys(draftIdb)
+  const drafts = await Promise.all(allKeys.map(k => get(k, draftIdb)))
+  return drafts
+    .filter(Boolean)
+    .sort((a, b) => new Date(b.savedAt) - new Date(a.savedAt))
+}
+
+/**
+ * Writes drafts from a backup straight into the store, keyed by their own id
+ * (an existing draft with the same id is overwritten). Entries that don't
+ * look like drafts are skipped. Returns how many were written.
+ */
+export async function importDrafts(list) {
+  await migrateFromLocalStorage()
+  let count = 0
+  for (const draft of Array.isArray(list) ? list : []) {
+    if (!draft || typeof draft.id !== 'string' || typeof draft.formKey !== 'string') continue
+    await set(draft.id, draft, draftIdb)
+    count += 1
+  }
+  return count
+}
+
+/**
  * Deletes a draft by id.
  */
 export async function deleteDraft(id) {
@@ -193,3 +222,4 @@ export function draftAge(draft) {
   const days = Math.round(hrs / 24)
   return `${days} day${days > 1 ? 's' : ''} ago`
 }
+

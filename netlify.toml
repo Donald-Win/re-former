@@ -2,9 +2,13 @@
   # index.html and manifest.json are now shared with the GitHub Pages build
   # (see index.html's %BASE_URL% and manifest.json's relative paths) —
   # no more `cp` swap step needed here.
-  command = "BASE_PATH=/ npm run build"
+  command = "npm test && BASE_PATH=/ npm run build"
   publish = "dist"
   ignore = "[ \"$BRANCH\" = \"dev\" ]"
+
+[build.environment]
+  # Vite 8 needs Node 20.19+ / 22.12+. Pin it so Netlify's default can't drift.
+  NODE_VERSION = "22"
 
 [[redirects]]
   from = "/*"

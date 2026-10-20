@@ -9,6 +9,7 @@ import { useState, useEffect } from 'react'
 import { CheckCircle2, User, Building2, PenLine, Trash2, FileText, Hash, Settings, Briefcase, List } from 'lucide-react'
 import { getUserPrefs, saveUserPref } from './userPrefs'
 import { SignaturePad } from './SignaturePad'
+import { BackupRestore } from './BackupRestore'
 import { APP_ACCENT } from './constants'
 
 export function UserSettings({ onClose }) {
@@ -245,6 +246,9 @@ export function UserSettings({ onClose }) {
             })}
           </div>
         </div>
+
+        {/* Backup & Restore */}
+        <BackupRestore accent={APP_ACCENT} />
 
         {/* Save button */}
         <button

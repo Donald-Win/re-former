@@ -50,7 +50,7 @@ const POLE_CODES = [
 
 const POLE_TYPES = [
   '1 Pole', '1 \u00BD Pole', '2 Pole', '3 Pole',
-  '4 Pole', 'H Pole', 'Double', 'Stay Pole',
+  '4 Pole', 'H Pole', 'Double', 'Stay Pole', 'Other',
 ]
 
 const CU_SIZES = [
@@ -753,3 +753,4 @@ function PoleRecordWizard({ onClose }) {
 }
 
 export default PoleRecordWizard
+

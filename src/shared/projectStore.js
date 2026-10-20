@@ -108,6 +108,22 @@ export async function saveProject({ id, projectName, npJobNumber, pcoWONo, ciwrN
 }
 
 /**
+ * Writes projects from a backup straight into the store, keyed by their own
+ * id (an existing project with the same id is overwritten). Entries that
+ * don't look like projects are skipped. Returns how many were written.
+ */
+export async function importProjects(list) {
+  await migrateFromLocalStorage()
+  let count = 0
+  for (const project of Array.isArray(list) ? list : []) {
+    if (!project || typeof project.id !== 'string') continue
+    await set(project.id, project, projectIdb)
+    count += 1
+  }
+  return count
+}
+
+/**
  * Deletes a project by id.
  */
 export async function deleteProject(id) {
@@ -125,3 +141,4 @@ export function projectSub(p) {
   const parts = [p.pcoWONo && `W/O ${p.pcoWONo}`, p.ciwrNo && `CIWR ${p.ciwrNo}`].filter(Boolean)
   return parts.join(' · ')
 }
+

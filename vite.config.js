@@ -57,6 +57,14 @@ export default defineConfig({
 
   base,
 
+  // ── Unit tests (npm test) ───────────────────────────────────────────────
+  // Plain Node environment — the tests cover pure logic only (range limits,
+  // coordinate conversion, filename building, the declarative PDF renderer).
+  test: {
+    environment: 'node',
+    include: ['src/**/*.test.js'],
+  },
+
   // ── Web Worker output format ────────────────────────────────────────────
   // pdfGen.worker.js (see src/workers/pdfGen.worker.js) uses dynamic
   // import() per PDF generator so each generator stays its own lazy-loaded
