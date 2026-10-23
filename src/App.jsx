@@ -12,12 +12,13 @@ import ZoneSubWizard from './wizards/ZoneSubWizard'
 import HVInspectionWizard from './wizards/HVInspectionWizard'
 import DistributionTransformerWizard from './wizards/DistributionTransformerWizard'
 import { AuthGate } from './auth/AuthGate'
+import { ensureFreshAccess } from './auth/auth'
 import { UserSettings } from './shared/UserSettings'
 import { getUserPrefs } from './shared/userPrefs'
 import { CHANGELOGS } from './changelog'
 import { PdfCanvasPreview } from './shared/PdfCanvasPreview'
 
-const APP_VERSION = '2.24.0'
+const APP_VERSION = '2.25.0'
 
 // ── Wizard config (module-level — never recreated) ────────────────────────────
 const WIZARD_CONFIG = {
@@ -504,6 +505,10 @@ const AsBuiltFormSelector = () => {
   // ── PDF viewer handlers ───────────────────────────────────────────────────
   const handleFormClick = useCallback((url, name, formId) => {
     if (formId && WIZARD_CONFIG[formId]) {
+      // Opening a form is a natural point to re-verify the device (throttled —
+      // a no-op if it was checked in the last few minutes). If it has been
+      // blocked, the lock screen appears before any data entry starts.
+      ensureFreshAccess()
       setActiveWizard({ formId, mode: 'choice' })
       return
     }
@@ -1280,4 +1285,5 @@ function App() {
 }
 
 export default App
+
 

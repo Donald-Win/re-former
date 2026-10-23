@@ -13,6 +13,19 @@
 
 export const CHANGELOGS = [
   {
+    version: '2.25.0',
+    changes: [
+      {
+        heading: 'Short outages no longer lock you out',
+        detail: "If the access service has a temporary problem, the app now keeps working as normal instead of showing the Access Restricted screen.",
+      },
+      {
+        heading: 'If you go a week without signal',
+        detail: "A device that hasn't been able to check in for over 7 days will ask you to connect to the internet once. Your drafts and saved details are untouched, and it carries on straight after.",
+      },
+    ],
+  },
+  {
     version: '2.24.0',
     changes: [
       {
@@ -453,4 +466,5 @@ export const CHANGELOGS = [
     ],
   },
 ]
+
 

@@ -1,12 +1,14 @@
 /**
  * re-former Auth Module
  * ─────────────────────────────────────────────────────────────────────────────
- * Handles device identity, Cloudflare Worker calls, caching, polling, and
- * event-driven revocation detection.
+ * Handles device identity, Cloudflare Worker calls, caching, and
+ * event-driven revocation detection (no timer — see RE-CHECK TRIGGERS).
  *
  * Usage (see AuthGate.jsx for the React integration):
  *   import { getDeviceId, checkAccessOnline, ... } from './auth'
  */
+
+import { validateCheckResult, WIZARD_CHECK_MIN_GAP_MS } from './authPolicy'
 
 // ── CONFIG ────────────────────────────────────────────────────────────────────
 // Replace with your actual Cloudflare Worker URL after deployment.
@@ -17,7 +19,6 @@ export const APP_ID = 'reformer'
 
 const DEVICE_ID_KEY  = 'dcw-device-id'
 const AUTH_CACHE_KEY = 're-former-auth-cache'
-const POLL_MS        = 43_200_000 // 12 hours
 const CHECK_COOLDOWN = 120_000  // 2 minutes — minimum gap between visibility/online checks
 
 let _lastCheckedAt = 0  // timestamp of most recent check attempt (success OR failure)
@@ -120,8 +121,11 @@ export async function checkAccessOnline() {
       cache: 'no-store',
     })
     if (!res.ok) throw new Error(`Worker responded ${res.status}`)
-    const result = await res.json()
-    // Cache all results including denied — so offline behaviour is correct.
+    // validateCheckResult throws on a malformed reply or the Worker's
+    // 'kv_unavailable' ("I don't know") answer, so neither is ever cached or
+    // mistaken for a block — they behave exactly like a network error.
+    const result = validateCheckResult(await res.json())
+    // Cache all definite results including denied — so offline behaviour is correct.
     cacheResult(result)
     return result
   } finally {
@@ -132,12 +136,18 @@ export async function checkAccessOnline() {
   }
 }
 
-// ── POLLING & EVENT LISTENERS ─────────────────────────────────────────────────
-// A single module-level callback is set by AuthGate and shared across
-// polling, online events, and visibility events.
+// ── RE-CHECK TRIGGERS ─────────────────────────────────────────────────────────
+// There is deliberately no timer. A device is re-verified when:
+//   • the app opens                          (AuthGate, on mount)
+//   • the app returns to the foreground      (addVisibilityListener)
+//   • the network comes back                 (addOnlineListener)
+//   • the tech opens a form                  (ensureFreshAccess, from App.jsx)
+// The last three are throttled by a minimum gap since the previous attempt
+// so rapid app-switching can't hammer the Worker. A single module-level
+// callback, set by AuthGate, is invoked when any of them finds the device
+// blocked.
 
 let _onRevoked        = null
-let _pollTimer        = null
 let _listeningOnline  = false
 let _listeningVisible = false
 
@@ -145,72 +155,39 @@ export function setRevokedCallback(fn) {
   _onRevoked = fn
 }
 
-export function startPolling() {
-  stopPolling()
-  _pollTimer = setInterval(async () => {
-    if (!navigator.onLine || !_onRevoked) return
-    try {
-      const result = await checkAccessOnline()
-      if (!result.allowed) {
-        stopPolling()
-        _onRevoked(getDeviceId())
-      }
-    } catch {
-      // Network hiccup — don't penalise user, just try next interval
-    }
-  }, POLL_MS)
-}
-
-export function stopPolling() {
-  if (_pollTimer) {
-    clearInterval(_pollTimer)
-    _pollTimer = null
-  }
+/** Shared by every trigger: throttled live check; lock the app if blocked. */
+async function recheck(minGapMs) {
+  if (!navigator.onLine || !_onRevoked) return
+  if (Date.now() - _lastCheckedAt < minGapMs) return
+  try {
+    const result = await checkAccessOnline()
+    if (!result.allowed) _onRevoked(getDeviceId())
+  } catch { /* network error / service hiccup — keep the current state */ }
 }
 
 /**
- * Re-checks immediately when the browser tab comes back into view.
- * This catches revocations that happened while the tab was backgrounded.
- * A cooldown prevents hammering the API when the user switches apps rapidly.
+ * Called when the tech opens a form. Cheap no-op if the device was checked
+ * within the last few minutes (app open, resume, or an earlier form).
+ * Never throws.
  */
+export function ensureFreshAccess(minGapMs = WIZARD_CHECK_MIN_GAP_MS) {
+  return recheck(minGapMs)
+}
+
+/** Re-checks when the app comes back into view (catches revocations while backgrounded). */
 export function addVisibilityListener() {
   if (_listeningVisible) return
   _listeningVisible = true
-  document.addEventListener('visibilitychange', async () => {
-    if (document.visibilityState !== 'visible') return
-    if (!navigator.onLine || !_onRevoked) return
-    if (Date.now() - _lastCheckedAt < CHECK_COOLDOWN) return  // checked recently — skip
-    try {
-      const result = await checkAccessOnline()
-      if (!result.allowed) {
-        stopPolling()
-        _onRevoked(getDeviceId())
-      }
-    } catch { /* network error — ignore */ }
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') recheck(CHECK_COOLDOWN)
   })
 }
 
-/**
- * Re-checks immediately when the device regains a network connection.
- * This is how offline→online transitions are handled.
- */
+/** Re-checks when the device regains a network connection. */
 export function addOnlineListener() {
   if (_listeningOnline) return
   _listeningOnline = true
-  window.addEventListener('online', async () => {
-    if (!_onRevoked) return
-    if (Date.now() - _lastCheckedAt < CHECK_COOLDOWN) return  // checked recently — skip
-    try {
-      const result = await checkAccessOnline()
-      if (result.allowed) {
-        // Still allowed — kick off polling now that we have a connection
-        startPolling()
-      } else {
-        stopPolling()
-        _onRevoked(getDeviceId())
-      }
-    } catch { /* network error — ignore */ }
-  })
+  window.addEventListener('online', () => recheck(CHECK_COOLDOWN))
 }
 
 // ── DEBUG HELPERS (available in browser console) ─────────────────────────────
@@ -229,4 +206,5 @@ window.__reformerAuth = {
     console.log('[re-former auth] Device ID and cache cleared. Reload to generate new ID.')
   },
 }
+
 
