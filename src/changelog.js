@@ -13,6 +13,15 @@
 
 export const CHANGELOGS = [
   {
+    version: '2.25.0',
+    changes: [
+      {
+        heading: 'New form: As-built Earth Installation and Test Record',
+        detail: "360S014EJ can now be filled out in the app. Tap it in Browse All Forms (or under any work type that lists it) and choose \"Fill Out Form\". It covers the test type, Earth 1 and Earth 2 results, conductor details, connection type, ground conditions, other services in the trench, and comments. Photos can be attached like on the other forms. The dimensioned plan is still drawn by hand on the printed form.",
+      },
+    ],
+  },
+  {
     version: '2.24.0',
     changes: [
       {
@@ -453,4 +462,5 @@ export const CHANGELOGS = [
     ],
   },
 ]
+
 

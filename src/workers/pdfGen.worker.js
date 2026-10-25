@@ -36,6 +36,8 @@ import * as Comlink from 'comlink'
 const GENERATORS = {
   DistributionTransformerPdfGenerator:
     () => import('../wizards/generators/DistributionTransformerPdfGenerator.js'),
+  EarthTestPdfGenerator:
+    () => import('../wizards/generators/EarthTestPdfGenerator.js'),
   ElecEquipPdfGenerator:
     () => import('../wizards/generators/ElecEquipPdfGenerator.js'),
   ElecDistributionPdfGenerator:
@@ -88,3 +90,4 @@ Comlink.expose({
     return Comlink.transfer(bytes, [bytes.buffer])
   },
 })
+

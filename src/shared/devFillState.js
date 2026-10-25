@@ -283,6 +283,19 @@ const OVERRIDE_VALUES = {
   cableDuctNewSize:   '100mm',
   cableDuctExistingSize: '100mm',
 
+  // ── Earth Test wizard (360S014EJ) ────────────────────────────────────────────
+  // conductorMaterial / conductorSize / otherServicesOther / comments reuse
+  // the shared overrides elsewhere in this file.
+  earthTestType:         'New',        // 'New'|'Altered Earth'|'Test Only'|'End of Line Earth'
+  belowGroundConnection: 'Shear Bolt', // 'Shear Bolt'|'Welded'
+  groundConditions:      'Clay, damp',
+  remarks:               'Test remark',
+  resistance:            '12.5',       // nested in earth1 / earth2 (totalMEN reuses the Transformer override)
+  rods:                  '2',
+  depth:                 '1.8m',
+  equipmentNumber:       'EQ-001',     // top-level on the Earth Test wizard
+  equipmentEarthed:      'Transformer TX-789',
+
   // ── Elec Distribution wizard (360S014EB) ────────────────────────────────────
   distributionMain:   'Underground',
   undergroundCableDepth: '600',
@@ -657,3 +670,4 @@ export function devFillState(prevState) {
 export function devFillStateAllOptions(prevState) {
   return { ...fillObject(withPoleExtras(prevState)), __calibrate: true }
 }
+
