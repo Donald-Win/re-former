@@ -6,6 +6,8 @@ import { APP_ACCENT, WIZARD_COLORS } from '../shared/constants'
 import { WizardShell } from '../shared/WizardShell'
 import { WF, WTA, WCB, SectionHead } from '../shared/WizardInputs'
 import { PhotoAttachStep } from '../shared/PhotoAttachStep'
+import { PlanSketchStep } from '../shared/PlanSketchStep'
+import { emptyPlan } from '../shared/planModel'
 import { sharePdf, buildPdfFilename } from '../shared/sharePdf'
 import { getBaseFormState } from '../shared/userPrefs'
 import { JobDetailsStep } from '../shared/JobDetailsStep'
@@ -31,7 +33,7 @@ const EJ_STEPS = [
   'Job Details',
   'Test Type & Results',
   'Conductor & Connection',
-  'Comments & Plan',
+  'Plan & Comments',
   'Photos',
   'Preview & Print',
 ]
@@ -79,6 +81,7 @@ export default function EarthTestWizard({ onClose }) {
     remarks: '',
     otherServicesInTrench: [],
     otherServicesOther: '',
+    plan: emptyPlan(),
     comments: '',
   }))
   const [photos, setPhotos] = useState([])
@@ -195,16 +198,11 @@ export default function EarthTestWizard({ onClose }) {
       )
 
       case 3: return (
-        // 3 — Comments & Plan
+        // 3 — Plan & Comments
         <div key="s3">
-          <SectionHead label="Dimensioned Plan" accent={ACCENT} />
-          <div style={{
-            background: EJ_BG, border: `1px solid ${EJ_BORDER}`, borderRadius: 8,
-            padding: '10px 14px', marginBottom: 14, fontSize: 13, color: ACCENT, lineHeight: 1.5,
-          }}>
-            <strong>📐 Location plan:</strong> Draw the dimensioned plan manually on the printed form —
-            include the north arrow in the circle and the earth wire lengths.
-          </div>
+          <SectionHead label="Dimensioned Plan" sub="Include the north arrow and the earth wire lengths" accent={ACCENT} />
+          <PlanSketchStep plan={d.plan} onChange={p => set('plan', p)} accent={ACCENT} />
+          <div style={{ height: 1, background: '#eee', margin: '16px 0 14px' }} />
           <SectionHead label="Comments" accent={ACCENT} />
           <WTA label="Comments (e.g. boundary unknown etc.)" v={d.comments} set={set('comments')} rows={3} accent={ACCENT} />
           <div style={{ fontSize: 11, color: '#9ca3af', marginTop: -6 }}>

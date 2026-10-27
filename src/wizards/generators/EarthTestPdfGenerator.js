@@ -14,8 +14,8 @@
  * across them by splitComments() below. Anything beyond two lines is not
  * drawn — there is no more room on the form.
  *
- * The dimensioned plan (grid + north-arrow circle) is drawn by hand on the
- * printed form, same as the other forms that carry a plan.
+ * The dimensioned plan (d.plan — see planModel.js) is printed into the form's
+ * plan box as vector lines/shapes/text by drawPlan() in planPdf.js.
  *
  * Coordinate convention
  * ─────────────────────
@@ -31,6 +31,7 @@ import { PDFDocument } from 'pdf-lib'
 import { embedAppFont, fetchPdfTemplate, createPageDrawer, DEFAULT_INK, A4_HEIGHT } from '../../shared/pdfDrawUtils'
 import { renderFields } from '../../shared/pdfFieldRenderer'
 import { appendPhotosToPdf } from '../../shared/appendPhotosToPdf'
+import { drawPlan } from '../../shared/planPdf'
 
 const getTemplateUrl = () =>
   `${import.meta.env.BASE_URL}forms/360S014EJ.pdf`
@@ -144,6 +145,9 @@ export async function generateEjPdf(d, photos = []) {
   const draw          = createPageDrawer(p1, font, DEFAULT_INK, A4_HEIGHT)
 
   await renderFields({ pdfDoc, page: p1, draw }, FIELDS, d)
+
+  // ── Dimensioned plan ──────────────────────────────────────────────────────
+  drawPlan({ page: p1, draw, font, plan: d.plan })
 
   // ── Comments (split across the two dotted lines) ──────────────────────────
   const wrap = (text, maxWidth) => draw.wrapText(text, maxWidth, COMMENTS.size)

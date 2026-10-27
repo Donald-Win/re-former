@@ -13,6 +13,15 @@
 
 export const CHANGELOGS = [
   {
+    version: '2.26.0',
+    changes: [
+      {
+        heading: 'Draw the earth plan in the app',
+        detail: "The Earth Installation and Test Record now has a Plan step where you build the dimensioned plan on screen instead of drawing it by hand. Add rectangles, circles and dots in any colour and label them as whatever they are (pole, box, rod…), draw lines in any pattern, colour and thickness, add dimension lines between two points (aligned with the measured line, or strictly horizontal or vertical) with an adjustable offset, and place coloured text. Line and dimension labels follow the angle of their line. Taps snap to centres, line ends, rectangle corners and the midpoints of lines and edges. Pinch with two fingers to zoom in on the plan and move around it (or use the − / + / Fit bar), and the grid snap gets finer as you zoom. Choose where a shape's label sits (top, bottom, left, right or centre). Once you've drawn something the editor goes straight back to Select so you can adjust it immediately. Resize shapes by dragging the corner handle. Drag the north circle to point north. The finished plan is printed neatly into the plan box on the form.",
+      },
+    ],
+  },
+  {
     version: '2.25.0',
     changes: [
       {
