@@ -222,7 +222,7 @@ describe('labelLayout', () => {
     expect(mk('heavy').y).toBeLessThan(mk('fine').y)
   })
   it('shape labels sit beside the shape — clear of a resized one; text is centred', () => {
-    expect(labelLayout({ t: 'pt', kind: 'dot', x: 10, y: 20, label: 'P' })).toEqual({ x: 15.5, y: 20, anchor: 'start', angle: 0 })
+    expect(labelLayout({ t: 'pt', kind: 'dot', x: 10, y: 20, label: 'P' })).toEqual({ x: 16.75, y: 20, anchor: 'start', angle: 0 })
     expect(labelLayout({ t: 'pt', kind: 'rect', x: 100, y: 20, w: 40, h: 10, label: 'B' })).toEqual({ x: 123, y: 20, anchor: 'start', angle: 0 })
     expect(labelLayout({ t: 'pt', kind: 'text', x: 10, y: 20, label: 'Hi' })).toEqual({ x: 10, y: 20, anchor: 'middle', angle: 0 })
   })
@@ -249,7 +249,7 @@ describe('shape label position', () => {
     const c = { t: 'pt', kind: 'circle', x: 100, y: 50, w: 30, labelPos: 'top', label: 'L' }
     expect(labelLayout(c).y).toBe(29)                         // 50 − 15 − 6
     const dot = { t: 'pt', kind: 'dot', x: 100, y: 50, labelPos: 'left', label: 'L' }
-    expect(labelLayout(dot).x).toBe(94.5)                     // 100 − 2.5 − 3
+    expect(labelLayout(dot).x).toBe(93.25)                    // 100 − 3.75 − 3
   })
   it('normalizePlan keeps a valid position, defaults the rest, and ignores it for text', () => {
     const p = normalizePlan({ els: [
@@ -286,10 +286,10 @@ describe('distToSegment', () => {
 })
 
 describe('shape sizes', () => {
-  it('defaults: circle/rect 12, dot 5, text none; circles are round', () => {
+  it('defaults: circle/rect 12, dot 7.5, text none; circles are round', () => {
     expect(pointSize({ kind: 'rect' })).toEqual({ w: 12, h: 12 })
     expect(pointSize({ kind: 'circle' })).toEqual({ w: 12, h: 12 })
-    expect(pointSize({ kind: 'dot' })).toEqual({ w: 5, h: 5 })
+    expect(pointSize({ kind: 'dot' })).toEqual({ w: 7.5, h: 7.5 })
     expect(pointSize({ kind: 'text' })).toEqual({ w: 0, h: 0 })
     expect(pointSize({ kind: 'circle', w: 20, h: 5 })).toEqual({ w: 20, h: 20 })
   })
@@ -306,6 +306,35 @@ describe('shape sizes', () => {
   it('normalizePlan keeps and clamps stored sizes', () => {
     const p = normalizePlan({ els: [{ id: 'a', t: 'pt', kind: 'rect', x: 10, y: 10, w: 40, h: 9999 }] })
     expect(pointSize(p.els[0])).toEqual({ w: 40, h: SIZE_MAX })
+  })
+})
+
+describe('the dot has one fixed size', () => {
+  const dotPlan = () => addPoint(emptyPlan(), 'dot', 100, 100, '', 'd1').plan
+
+  it('is 150% of the original 5-unit dot, whatever size is stored', () => {
+    expect(pointSize({ kind: 'dot' })).toEqual({ w: 7.5, h: 7.5 })
+    expect(pointSize({ kind: 'dot', w: 50, h: 50 })).toEqual({ w: 7.5, h: 7.5 })
+  })
+  it('cannot be resized', () => {
+    const p = dotPlan()
+    expect(setPointSize(p, 'd1', 40, 40)).toEqual(p)
+    expect(resizeHandle(p.els[0], 6)).toBe(null)
+  })
+  it('a stored size is dropped when loading', () => {
+    const p = normalizePlan({ els: [{ id: 'a', t: 'pt', kind: 'dot', x: 5, y: 5, w: 30, h: 30 }] })
+    expect(p.els[0].w).toBe(undefined)
+    expect(p.els[0].h).toBe(undefined)
+  })
+  it('selecting a dot never offers a resize handle — dragging it can only move it', () => {
+    const p = dotPlan()
+    for (const [x, y] of [[100, 100], [103, 103], [106, 106], [100, 108]]) {
+      expect(hitTest(p, x, y, { tol: 10, handleOff: 6, selectedId: 'd1' })).toEqual({ type: 'pt', id: 'd1' })
+    }
+  })
+  it('turning a dot into a rectangle gives a normal default rectangle', () => {
+    const p = updateEl(dotPlan(), 'd1', { kind: 'rect' })
+    expect(pointSize(p.els[0])).toEqual({ w: 12, h: 12 })
   })
 })
 

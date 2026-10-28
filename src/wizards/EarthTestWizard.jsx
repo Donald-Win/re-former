@@ -68,7 +68,6 @@ export default function EarthTestWizard({ onClose }) {
   const [d, setD]           = useState(() => getBaseFormState({
     siteId: '',
     equipmentEarthed: '',
-    contractorJobCostCode: '',
     earthTestType: '',
     earth1: emptyEarth(),
     earth2: emptyEarth(),
@@ -141,7 +140,6 @@ export default function EarthTestWizard({ onClose }) {
           <SectionHead label="Site & Equipment" accent={ACCENT} />
           <WF label="Site ID / Pole ID"    v={d.siteId}           set={set('siteId')}           accent={ACCENT} />
           <WF label="Equipment Earthed"    v={d.equipmentEarthed} set={set('equipmentEarthed')} accent={ACCENT} />
-          <WF label="Contractor Job Cost Code" v={d.contractorJobCostCode} set={set('contractorJobCostCode')} accent={ACCENT} />
         </JobDetailsStep>
       )
 

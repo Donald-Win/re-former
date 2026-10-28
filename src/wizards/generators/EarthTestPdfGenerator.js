@@ -62,7 +62,8 @@ export const FIELDS = {
   dateInstalledTested:   { type: 'text', align: 'left', x: 434, y: 107, size: FS, value: d => d.dateWorkCompleted },
   signed:                { type: 'signature', x: 384, y: 113, maxW: 120, maxH: 20, value: d => d.signed },
   namePrint:             { type: 'text', align: 'left', x: 403, y: 142, size: FS, value: d => d.namePrint },
-  contractorJobCostCode: { type: 'text', align: 'left', x: 447, y: 162, size: FS, value: d => d.contractorJobCostCode },
+  // The job cost code is the NP Job Number from the project details — not asked for separately.
+  contractorJobCostCode: { type: 'text', align: 'left', x: 447, y: 162, size: FS, value: d => d.npJobNumber },
 
   // ── Earth test type ─────────────────────────────────────────────────────────
   testTypeNew:       { type: 'check', x: 102, y: 198, value: d => d.earthTestType === 'New' },
@@ -71,21 +72,23 @@ export const FIELDS = {
   testTypeEndOfLine: { type: 'check', x: 350, y: 198, value: d => d.earthTestType === 'End of Line Earth' },
 
   // ── Earth test results — Earth 1 (cell 241–400) / Earth 2 (cell 400–558) ────
-  // Resistance is right-aligned so it finishes just before the printed Ω.
-  earth1Resistance: { type: 'text', align: 'right', x: 372, y: 243, size: FS, value: d => e1(d).resistance },
-  earth2Resistance: { type: 'text', align: 'right', x: 529, y: 243, size: FS, value: d => e2(d).resistance },
+  // Every value in these cells is centred in its cell, so they all line up on
+  // the same axis down each column (the printed Ω sits clear to the right).
+  earth1Resistance: { type: 'text', align: 'center', x: 241, width: 159, y: 243, size: FS, value: d => e1(d).resistance },
+  earth2Resistance: { type: 'text', align: 'center', x: 400, width: 158, y: 243, size: FS, value: d => e2(d).resistance },
   // Total M.E.N is ONE combined value for the whole installation (not per
-  // earth). It sits in the Earth 1 cell, finishing just before that cell's Ω.
-  totalMEN:         { type: 'text', align: 'right', x: 372, y: 260, size: FS, value: d => d.totalMEN },
-  // Rods / depth / equipment number are centred in their cells.
+  // earth), so it sits in the Earth 1 cell only.
+  totalMEN:         { type: 'text', align: 'center', x: 241, width: 159, y: 260, size: FS, value: d => d.totalMEN },
   earth1Rods:       { type: 'text', align: 'center', x: 241, width: 159, y: 277, size: FS, value: d => e1(d).rods },
   earth2Rods:       { type: 'text', align: 'center', x: 400, width: 158, y: 277, size: FS, value: d => e2(d).rods },
   earth1Depth:      { type: 'text', align: 'center', x: 241, width: 159, y: 294, size: FS, value: d => e1(d).depth },
   earth2Depth:      { type: 'text', align: 'center', x: 400, width: 158, y: 294, size: FS, value: d => e2(d).depth },
 
-  // Conductor details — one conductor, Material in the Earth 1 cell, Size in the Earth 2 cell
-  conductorMaterial: { type: 'text', align: 'left', x: 280, y: 311, size: FS, value: d => d.conductorMaterial },
-  conductorSize:     { type: 'text', align: 'left', x: 425, y: 311, size: FS, value: d => d.conductorSize },
+  // Conductor details — one conductor: Material in the Earth 1 cell, Size in
+  // the Earth 2 cell, centred like the rest. (A very long value would run
+  // into the printed "Material:" / "Size:" label.)
+  conductorMaterial: { type: 'text', align: 'center', x: 241, width: 159, y: 311, size: FS, value: d => d.conductorMaterial },
+  conductorSize:     { type: 'text', align: 'center', x: 400, width: 158, y: 311, size: FS, value: d => d.conductorSize },
 
   // Equipment Number is ONE value for the installation (not per earth). It is
   // centred in the Earth 1 cell — move x/width here if it should sit elsewhere.

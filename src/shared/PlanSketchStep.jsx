@@ -15,6 +15,7 @@
  *   • Shape  — rectangle, circle or dot, in any colour. Shapes mean nothing by
  *     themselves: give them a label (pole, box, rod…) and choose where it sits
  *     (top, bottom, left, right or centre). A selected shape can be resized
+ *     (the dot is the exception: one fixed size, for joints and earth rods)
  *     (drag the corner handle or use the size buttons); rectangles can be
  *     any width × height.
  *   • Line   — tap start then end. Choose pattern, colour and weight.
@@ -809,6 +810,7 @@ function PlanEditor({ plan, onChange, onClose, accent }) {
             {sel.t === 'pt' && sel.kind !== 'text' && (() => {
               const { w, h } = pointSize(sel)
               const round = pointKind(sel.kind).shape === 'circle'
+              const fixed = !!pointKind(sel.kind).fixed         // the dot has one size
               return (
                 <div style={{ marginBottom: 10 }}>
                   <ShapeChips value={sel.kind} onPick={k => changeProp(sel.id, { kind: k })} accent={accent} />
@@ -817,7 +819,7 @@ function PlanEditor({ plan, onChange, onClose, accent }) {
                     Label position
                   </div>
                   <LabelPosChips value={sel.labelPos} onPick={o => changeProp(sel.id, { labelPos: o })} accent={accent} />
-                  <div style={{ marginTop: 8 }}>
+                  {!fixed && <div style={{ marginTop: 8 }}>
                     {round ? (
                       <Stepper label="Size" value={w} accent={accent} onChange={v => resizeSel(sel.id, v, v)} />
                     ) : (
@@ -832,7 +834,7 @@ function PlanEditor({ plan, onChange, onClose, accent }) {
                     <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 6 }}>
                       You can also drag the square handle at the corner of the shape.
                     </div>
-                  </div>
+                  </div>}
                 </div>
               )
             })()}

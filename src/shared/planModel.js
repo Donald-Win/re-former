@@ -83,12 +83,15 @@ export const LINE_WEIGHTS = [
 
 // ── Shapes ──────────────────────────────────────────────────────────────────
 // Generic on purpose. `r` is the DEFAULT radius / half-width — the real size
-// can be changed per element (see pointSize). fillOpacity: a light tint for
-// rectangle and circle; the dot is solid (it's a marker, not an area).
+// can be changed per element (see pointSize), except for `fixed` kinds, which
+// are always exactly `r`. fillOpacity: a light tint for rectangle and circle;
+// the dot is solid (it's a marker for a joint or an earth rod, not an area),
+// and a fixed size so it can't be resized by accident when you try to select
+// or move it. It's 150% of the original dot size.
 export const POINT_KINDS = [
-  { id: 'rect',   label: 'Rectangle', shape: 'square', r: 6,   fillOpacity: 0.2 },
-  { id: 'circle', label: 'Circle',    shape: 'circle', r: 6,   fillOpacity: 0.2 },
-  { id: 'dot',    label: 'Dot',       shape: 'circle', r: 2.5, fillOpacity: 1 },
+  { id: 'rect',   label: 'Rectangle', shape: 'square', r: 6,    fillOpacity: 0.2 },
+  { id: 'circle', label: 'Circle',    shape: 'circle', r: 6,    fillOpacity: 0.2 },
+  { id: 'dot',    label: 'Dot',       shape: 'circle', r: 3.75, fillOpacity: 1, fixed: true },
   { id: 'text',   label: 'Text',      shape: 'none',   r: 0,   fillOpacity: 0 },
 ]
 
@@ -184,8 +187,10 @@ export function normalizePlan(raw) {
       const kind = POINT_IDS.has(e.kind) ? e.kind : LEGACY_POINT[e.kind]
       if (!kind) continue
       const el = { id: e.id, t: 'pt', kind, x: cx_(e.x), y: cy_(e.y), label }
-      if (isNum(e.w)) el.w = clamp(e.w, SIZE_MIN, SIZE_MAX)
-      if (isNum(e.h)) el.h = clamp(e.h, SIZE_MIN, SIZE_MAX)
+      if (!pointKind(kind).fixed) {                       // fixed-size kinds (the dot) never carry a size
+        if (isNum(e.w)) el.w = clamp(e.w, SIZE_MIN, SIZE_MAX)
+        if (isNum(e.h)) el.h = clamp(e.h, SIZE_MIN, SIZE_MAX)
+      }
       el.color = COLOR_IDS.has(e.color) ? e.color : 'blue'
       if (kind !== 'text') el.labelPos = LABEL_POS_IDS.has(e.labelPos) ? e.labelPos : 'right'
       els.push(el)
@@ -250,6 +255,7 @@ export function pointSize(el) {
   const k = pointKind(el.kind)
   if (k.shape === 'none') return { w: 0, h: 0 }
   const def = k.r * 2
+  if (k.fixed) return { w: def, h: def }
   const w = isNum(el.w) ? clamp(el.w, SIZE_MIN, SIZE_MAX) : def
   const h = k.shape === 'circle' ? w : (isNum(el.h) ? clamp(el.h, SIZE_MIN, SIZE_MAX) : def)
   return { w, h }
@@ -259,7 +265,7 @@ export function setPointSize(plan, id, w, h) {
   return {
     ...plan,
     els: plan.els.map(e => {
-      if (e.id !== id || e.t !== 'pt') return e
+      if (e.id !== id || e.t !== 'pt' || pointKind(e.kind).fixed) return e
       const ww = clamp(Math.round(w), SIZE_MIN, SIZE_MAX)
       const hh = pointKind(e.kind).shape === 'circle' ? ww : clamp(Math.round(h), SIZE_MIN, SIZE_MAX)
       return { ...e, w: ww, h: hh }
@@ -272,12 +278,12 @@ const DIAG = Math.SQRT1_2
 /**
  * The drag handle for resizing a shape, sitting just outside its
  * bottom-right corner (`off` pushes it clear of the shape so it can be
- * grabbed even on a tiny one). null for shapeless points (text).
+ * grabbed even on a tiny one). null for points that can't be resized (text, dot).
  */
 export function resizeHandle(el, off = 0) {
   if (el.t !== 'pt') return null
   const k = pointKind(el.kind)
-  if (k.shape === 'none') return null
+  if (k.shape === 'none' || k.fixed) return null           // text and the dot can't be resized
   const { w, h } = pointSize(el)
   if (k.shape === 'circle') {
     const d = (w / 2 + off) * DIAG
