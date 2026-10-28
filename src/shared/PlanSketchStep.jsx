@@ -11,7 +11,8 @@
  * a tool again to draw the next one (its settings are remembered).
  *   • Select — tap an item to edit it (label, colour, pattern, size…) or
  *     delete it; drag a shape, or a selected line/dimension's end handle, to
- *     move it. Anything sharing that vertex moves with it.
+ *     move it. Only the item you grab moves — a wire or dimension that ends on
+ *     the same spot stays put (snapping makes it easy to rejoin).
  *   • Shape  — rectangle, circle or dot, in any colour. Shapes mean nothing by
  *     themselves: give them a label (pole, box, rod…) and choose where it sits
  *     (top, bottom, left, right or centre). A selected shape can be resized
@@ -48,7 +49,7 @@ import {
   normalizePlan, emptyPlan, addPoint, addLine, addDim, updateEl, removeEl, setNorth,
   pointSize, setPointSize, resizeHandle, sizeFromHandle, SIZE_MIN, SIZE_MAX,
   dimGeometry, dimHandle, offsetFromPoint, setDimOffset,
-  snapPoint, snapTargets, vertexRefs, moveVertex, hitTest, labelLayout,
+  snapPoint, snapTargets, dragRefs, moveVertex, hitTest, labelLayout,
   angleFromNorthCentre, northGeometry,
 } from './planModel'
 import { ZOOM_MIN, ZOOM_MAX, clampZoom, snapStepForZoom, zoomFromPinch, scrollForAnchor } from './planView'
@@ -526,11 +527,8 @@ function PlanEditor({ plan, onChange, onClose, accent }) {
     } else if (tool === 'select' && hit?.type === 'offset') {
       g.kind = 'offset'
     } else if (tool === 'select' && (hit?.type === 'pt' || hit?.type === 'end')) {
-      const el = cur.els.find(x => x.id === hit.id)
-      const vx = hit.type === 'pt' ? el.x : (hit.end === 1 ? el.x1 : el.x2)
-      const vy = hit.type === 'pt' ? el.y : (hit.end === 1 ? el.y1 : el.y2)
       g.kind = 'vertex'
-      g.refs = vertexRefs(cur, vx, vy)
+      g.refs = dragRefs(hit)                         // just the grabbed item, not what else meets there
     }
     gest.current = g
   }
@@ -603,7 +601,15 @@ function PlanEditor({ plan, onChange, onClose, accent }) {
       return
     }
     if (tool === 'select') {
-      setSelId(g.hit ? g.hit.id : null)
+      let id = g.hit ? g.hit.id : null
+      // A selected line/dimension's end handle sits on top of anything else at
+      // that spot. A tap there selects the shape underneath instead, so every
+      // item at a joint can be reached (a drag still moves the selected end).
+      if (g.hit?.type === 'end') {
+        const under = hitTest(cur, p.x, p.y, { tol: 16 / ppu, selectedId: null, handleOff: 6 / ppu })
+        if (under?.type === 'pt') id = under.id
+      }
+      setSelId(id)
     } else if (tool === 'shape') {
       const s = snapPoint(cur, p.x, p.y, { step, tol: 10 / ppu })
       const r = addPoint(cur, shapeKind, s.x, s.y, '', undefined, { color: shapeColor, labelPos: 'right' })

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   emptyPlan, normalizePlan, addPoint, addLine, addDim, removeEl, updateEl, setNorth,
-  snapPoint, vertexRefs, moveVertex, hitTest, labelLayout,
+  snapPoint, vertexRefs, dragRefs, moveVertex, hitTest, labelLayout,
   angleFromNorthCentre, northGeometry, distToSegment, PLAN_W, PLAN_H, NORTH,
   pointSize, setPointSize, resizeHandle, sizeFromHandle, SIZE_MIN, SIZE_MAX,
   lineDash, lineWidth, dimGeometry, dimHandle, clampOffset, setDimOffset, offsetFromPoint,
@@ -149,23 +149,64 @@ describe('snapPoint', () => {
   })
 })
 
-describe('moving a vertex drags everything joined to it', () => {
-  it('moves the shape and the wire end together, nothing else', () => {
-    const p = sample()
-    const refs = vertexRefs(p, 200, 100)
-    expect(refs.length).toBe(2)
-    const q = moveVertex(p, refs, 220, 120)
-    const wire = q.els.find(e => e.id === 'wire1')
-    expect([wire.x1, wire.y1, wire.x2, wire.y2]).toEqual([220, 120, 300, 100])
-    expect(q.els.find(e => e.id === 'c1').x).toBe(220)
-    expect(q.els.find(e => e.id === 'd1').x).toBe(300)
+describe('dragging moves only the item that was grabbed', () => {
+  // The scenario from the bug report: a dot where two wires meet, with a
+  // dimension on each wire ending at the dot.
+  function joint() {
+    let p = emptyPlan()
+    p = addPoint(p, 'dot', 200, 100, '', 'dot').plan
+    p = addLine(p, 'solid', 'green', 'normal', 200, 100, 300, 60,  '', 'w1').plan
+    p = addLine(p, 'solid', 'green', 'normal', 200, 100, 300, 140, '', 'w2').plan
+    p = addDim(p, 'black', 'aligned', 200, 100, 300, 60,  14, '', 'd1').plan
+    p = addDim(p, 'black', 'aligned', 200, 100, 300, 140, 14, '', 'd2').plan
+    return p
+  }
+  const at = (p, id) => p.els.find(e => e.id === id)
+
+  it('dragRefs names just the grabbed point, or just the grabbed line end', () => {
+    expect(dragRefs({ type: 'pt', id: 'dot' })).toEqual([{ id: 'dot', end: 'p' }])
+    expect(dragRefs({ type: 'end', id: 'w1', end: 2 })).toEqual([{ id: 'w1', end: 2 }])
   })
-  it('a dimension pinned to a shape follows it', () => {
-    let p = sample()
-    p = addDim(p, 'black', 'aligned', 200, 100, 300, 100, 14, '3.2m', 'dm1').plan
-    const q = moveVertex(p, vertexRefs(p, 200, 100), 200, 60)
-    const dm = q.els.find(e => e.id === 'dm1')
-    expect([dm.x1, dm.y1, dm.x2, dm.y2]).toEqual([200, 60, 300, 100])
+  it('moving the dot leaves both wires and both dimensions exactly where they were', () => {
+    const p = joint()
+    const q = moveVertex(p, dragRefs({ type: 'pt', id: 'dot' }), 230, 130)
+    expect([at(q, 'dot').x, at(q, 'dot').y]).toEqual([230, 130])
+    for (const id of ['w1', 'w2']) expect(at(q, id)).toEqual(at(p, id))
+    for (const id of ['d1', 'd2']) expect(at(q, id)).toEqual(at(p, id))
+  })
+  it('moving one wire end leaves the dot, the other wire and the dimensions alone', () => {
+    const p = joint()
+    const q = moveVertex(p, dragRefs({ type: 'end', id: 'w1', end: 1 }), 180, 90)
+    expect([at(q, 'w1').x1, at(q, 'w1').y1]).toEqual([180, 90])
+    expect([at(q, 'w1').x2, at(q, 'w1').y2]).toEqual([300, 60])
+    expect(at(q, 'dot')).toEqual(at(p, 'dot'))
+    expect(at(q, 'w2')).toEqual(at(p, 'w2'))
+    expect(at(q, 'd1')).toEqual(at(p, 'd1'))
+  })
+  it('moving one dimension end moves only that end', () => {
+    const p = joint()
+    const q = moveVertex(p, dragRefs({ type: 'end', id: 'd1', end: 1 }), 210, 110)
+    expect([at(q, 'd1').x1, at(q, 'd1').y1]).toEqual([210, 110])
+    expect([at(q, 'd1').x2, at(q, 'd1').y2]).toEqual([300, 60])
+    expect(at(q, 'dot')).toEqual(at(p, 'dot'))
+    expect(at(q, 'w1')).toEqual(at(p, 'w1'))
+    expect(at(q, 'd2')).toEqual(at(p, 'd2'))
+  })
+  it('the dragged item can snap back onto what it left, to rejoin it', () => {
+    const p = joint()
+    const refs = dragRefs({ type: 'pt', id: 'dot' })
+    const s = snapPoint(p, 202, 101, { step: 8, tol: 8, exclude: refs })
+    expect(s.snapped).toBe(true)                       // snaps to a wire / dimension end still at (200,100)
+    expect([s.x, s.y]).toEqual([200, 100])
+  })
+  it('a dragged dimension keeps its offset valid after the move', () => {
+    const p = addDim(emptyPlan(), 'black', 'aligned', 100, 100, 200, 100, 14, '', 'd').plan
+    const q = moveVertex(p, dragRefs({ type: 'end', id: 'd', end: 2 }), 200, 5)
+    const g = dimGeometry(at(q, 'd'))
+    expect(g.a.y >= 0 && g.b.y >= 0 && g.a.y <= PLAN_H && g.b.y <= PLAN_H).toBe(true)
+  })
+  it('vertexRefs still reports everything that meets at a spot (for inspection, not dragging)', () => {
+    expect(vertexRefs(joint(), 200, 100).length).toBe(5)
   })
 })
 

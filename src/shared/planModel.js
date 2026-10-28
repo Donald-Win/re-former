@@ -34,10 +34,11 @@
  *       { id, t:'dim', color:'black', orient:'aligned', x1, y1, x2, y2, offset, label },
  *     ]
  *   }
- * Elements are independent records; two things "join" simply by having a
- * vertex at the same coordinates. moveVertex() drags everything that shares
- * a vertex together, so joins (and the points a dimension measures) survive
- * editing.
+ * Elements are independent records. Things that meet at a spot (a wire ending
+ * on a dot, a dimension measuring from a corner) simply have a vertex at the
+ * same coordinates — they are NOT attached to each other. Dragging moves only
+ * the item that was grabbed (see dragRefs); the others stay where they are,
+ * and snapping makes it easy to put an end back on the same spot.
  */
 
 // ── Layout of the printed plan box on 360S014EJ (A4 portrait) ───────────────
@@ -507,7 +508,16 @@ export function snapPoint(plan, x, y, { step = 8, tol = 8, exclude = [] } = {}) 
   }
 }
 
-/** Every vertex sitting (within eps) at x,y — the cluster that moves together. */
+/**
+ * The ONE vertex a drag should move for a hit-test result: the point that was
+ * grabbed, or the end of the line / dimension that was grabbed. Anything else
+ * sitting at the same spot is deliberately left alone.
+ */
+export function dragRefs(hit) {
+  return [{ id: hit.id, end: hit.type === 'pt' ? 'p' : hit.end }]
+}
+
+/** Every vertex sitting (within eps) at x,y — i.e. everything that meets there. (Dragging does not use this.) */
 export function vertexRefs(plan, x, y, eps = 0.6) {
   return vertices(plan)
     .filter(v => Math.abs(v.x - x) <= eps && Math.abs(v.y - y) <= eps)
