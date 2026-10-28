@@ -390,6 +390,7 @@ export function WizardShell({
             flex: 1, padding: 13, borderRadius: 12,
             border: `2px solid ${accent}`, background: '#fff', color: accent,
             fontFamily: 'inherit', fontSize: 15, fontWeight: 600, cursor: 'pointer',
+            whiteSpace: 'nowrap',
             transition: 'border-color 0.3s, color 0.3s',
           }}>← Back</button>
         )}
@@ -398,6 +399,7 @@ export function WizardShell({
             flex: 2, padding: 13, borderRadius: 12,
             border: 'none', background: accent, color: '#fff',
             fontFamily: 'inherit', fontSize: 15, fontWeight: 700, cursor: 'pointer',
+            whiteSpace: 'nowrap',
             transition: 'background 0.3s',
           }}>
             {step === steps.length - 2 ? 'Preview Form →' : 'Next →'}
@@ -465,4 +467,5 @@ export function WizardShell({
     </div>
   )
 }
+
 

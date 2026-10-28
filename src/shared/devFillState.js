@@ -132,6 +132,32 @@ function withPoleExtras(prevState) {
   return merged
 }
 
+// Sample structured plan for the Earth Test wizard (d.plan — see planModel.js).
+// Without an explicit override, fillObject would recurse into the plan and
+// turn every element's `kind` / `t` into dummy text, corrupting it.
+const SAMPLE_PLAN = {
+  v: 1, north: 40, northSet: true,
+  els: [
+    { id: 's1', t: 'pt', kind: 'circle', x: 190, y: 110, w: 10, color: 'blue',  labelPos: 'top',    label: 'Pole' },
+    { id: 's2', t: 'pt', kind: 'dot',    x: 290, y: 70,  color: 'red',   label: 'Rod 1' },
+    { id: 's3', t: 'pt', kind: 'dot',    x: 290, y: 150, color: 'red',   labelPos: 'left',   label: 'Rod 2' },
+    { id: 's4', t: 'pt', kind: 'rect',   x: 100, y: 110, w: 30, h: 22, color: 'green', labelPos: 'center', label: 'TX' },
+    { id: 's5', t: 'pt', kind: 'rect',   x: 370, y: 128, w: 24, h: 16, color: 'black', labelPos: 'bottom', label: 'Box' },
+    { id: 's6', t: 'pt', kind: 'text',   x: 450, y: 50,  color: 'red', label: 'Clay, damp' },
+    { id: 'l1', t: 'ln', pattern: 'solid',   color: 'green',  weight: 'normal', x1: 190, y1: 110, x2: 290, y2: 70,  label: 'Earth wire' },
+    { id: 'l2', t: 'ln', pattern: 'solid',   color: 'green',  weight: 'normal', x1: 190, y1: 110, x2: 290, y2: 150, label: '' },
+    { id: 'l3', t: 'ln', pattern: 'dashed',  color: 'red',    weight: 'thick',  x1: 115, y1: 110, x2: 190, y2: 110, label: 'Trench' },
+    { id: 'l4', t: 'ln', pattern: 'solid',   color: 'black',  weight: 'heavy',  x1: 40,  y1: 214, x2: 480, y2: 214, label: 'Kerb' },
+    { id: 'l5', t: 'ln', pattern: 'dotted',  color: 'blue',   weight: 'thick',  x1: 40,  y1: 190, x2: 480, y2: 190, label: 'Footpath' },
+    { id: 'l6', t: 'ln', pattern: 'dashdot', color: 'yellow', weight: 'normal', x1: 420, y1: 20,  x2: 420, y2: 170, label: 'Boundary' },
+    { id: 'd1', t: 'dim', color: 'black', orient: 'aligned',    x1: 190, y1: 110, x2: 290, y2: 70,  offset: -16, label: '3.2m' },
+    { id: 'd2', t: 'dim', color: 'black', orient: 'horizontal', x1: 100, y1: 110, x2: 190, y2: 110, offset: 24,  label: '2.0m' },
+    { id: 'd3', t: 'dim', color: 'red',   orient: 'vertical',   x1: 370, y1: 136, x2: 370, y2: 214, offset: 16,  label: '5.1m to kerb' },
+    { id: 'd4', t: 'dim', color: 'green', orient: 'horizontal', x1: 290, y1: 70,  x2: 420, y2: 100, offset: 22,  label: '9.5m' },
+    { id: 'd5', t: 'dim', color: 'blue',  orient: 'vertical',   x1: 290, y1: 150, x2: 290, y2: 214, offset: 20,  label: '5.4m' },
+  ],
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // OVERRIDE_VALUES
 // Exact field-name matches that take priority over type inference.
@@ -282,6 +308,20 @@ const OVERRIDE_VALUES = {
   cableDuct:          'New',
   cableDuctNewSize:   '100mm',
   cableDuctExistingSize: '100mm',
+
+  // ── Earth Test wizard (360S014EJ) ────────────────────────────────────────────
+  // conductorMaterial / conductorSize / otherServicesOther / comments reuse
+  // the shared overrides elsewhere in this file.
+  plan:                  SAMPLE_PLAN,  // structured plan — see planModel.js
+  earthTestType:         'New',        // 'New'|'Altered Earth'|'Test Only'|'End of Line Earth'
+  belowGroundConnection: 'Shear Bolt', // 'Shear Bolt'|'Welded'
+  groundConditions:      'Clay, damp',
+  remarks:               'Test remark',
+  resistance:            '12.5',       // nested in earth1 / earth2 (totalMEN reuses the Transformer override)
+  rods:                  '2',
+  depth:                 '1.8m',
+  equipmentNumber:       'EQ-001',     // top-level on the Earth Test wizard
+  equipmentEarthed:      'Transformer TX-789',
 
   // ── Elec Distribution wizard (360S014EB) ────────────────────────────────────
   distributionMain:   'Underground',
@@ -657,3 +697,4 @@ export function devFillState(prevState) {
 export function devFillStateAllOptions(prevState) {
   return { ...fillObject(withPoleExtras(prevState)), __calibrate: true }
 }
+

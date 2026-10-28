@@ -13,15 +13,20 @@
 
 export const CHANGELOGS = [
   {
+    version: '2.26.0',
+    changes: [
+      {
+        heading: 'Draw the earth plan in the app',
+        detail: "The Earth Installation and Test Record now has a Plan step where you build the dimensioned plan on screen instead of drawing it by hand. Add rectangles, circles and dots in any colour and label them as whatever they are (pole, box, rod…), draw lines in any pattern, colour and thickness, add dimension lines between two points (aligned with the measured line, or strictly horizontal or vertical) with an adjustable offset, and place coloured text. Line and dimension labels follow the angle of their line. Taps snap to centres, line ends, rectangle corners and the midpoints of lines and edges. Pinch with two fingers to zoom in on the plan and move around it (or use the − / + / Fit bar), and the grid snap gets finer as you zoom. Choose where a shape's label sits (top, bottom, left, right or centre). Once you've drawn something the editor goes straight back to Select so you can adjust it immediately. Resize shapes by dragging the corner handle. Drag the north circle to point north. The finished plan is printed neatly into the plan box on the form.",
+      },
+    ],
+  },
+  {
     version: '2.25.0',
     changes: [
       {
-        heading: 'Short outages no longer lock you out',
-        detail: "If the access service has a temporary problem, the app now keeps working as normal instead of showing the Access Restricted screen.",
-      },
-      {
-        heading: 'If you go a week without signal',
-        detail: "A device that hasn't been able to check in for over 7 days will ask you to connect to the internet once. Your drafts and saved details are untouched, and it carries on straight after.",
+        heading: 'New form: As-built Earth Installation and Test Record',
+        detail: "360S014EJ can now be filled out in the app. Tap it in Browse All Forms (or under any work type that lists it) and choose \"Fill Out Form\". It covers the test type, Earth 1 and Earth 2 results, conductor details, connection type, ground conditions, other services in the trench, and comments. Photos can be attached like on the other forms. The dimensioned plan is still drawn by hand on the printed form.",
       },
     ],
   },

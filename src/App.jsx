@@ -5,6 +5,7 @@ import { Search, FileText, CheckCircle2, Circle, ExternalLink, Download,
 import PoleRecordWizard from './wizards/PoleWizard'
 import TransformerWizardApp from './wizards/TransformerWizard'
 import ElecEquipWizard from './wizards/ElecEquipWizard'
+import EarthTestWizard from './wizards/EarthTestWizard'
 import LvConnectionWizard from './wizards/LvConnectionWizard'
 import ElecDistributionWizard from './wizards/ElecDistributionWizard'
 import LvBoxWizard from './wizards/LvBoxWizard'
@@ -18,7 +19,7 @@ import { getUserPrefs } from './shared/userPrefs'
 import { CHANGELOGS } from './changelog'
 import { PdfCanvasPreview } from './shared/PdfCanvasPreview'
 
-const APP_VERSION = '2.25.0'
+const APP_VERSION = '2.26.2'
 
 // ── Wizard config (module-level — never recreated) ────────────────────────────
 const WIZARD_CONFIG = {
@@ -42,6 +43,13 @@ const WIZARD_CONFIG = {
     fileName:  '360S014EE.pdf',
     accent:    '#4f46e5',
     Component: ElecEquipWizard,
+  },
+  '360S014EJ': {
+    label:     '360S014EJ – As-built Earth Installation and Test Record',
+    pdfName:   'As-built Earth Installation and Test Record',
+    fileName:  '360S014EJ.pdf',
+    accent:    '#4f46e5',
+    Component: EarthTestWizard,
   },
   '360S014EA': {
     label:     '360S014EA – As-built LV Connection Record',
