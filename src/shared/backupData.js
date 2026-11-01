@@ -7,6 +7,7 @@
  *               default view). Only localStorage keys starting 'rf_pref_'.
  *   drafts    — every named draft, photos included (draftStore.js).
  *   projects  — every saved project (projectStore.js).
+ *   planTemplates — every saved plan template, for every form (planTemplateStore.js).
  *
  * What it deliberately does NOT contain
  * ─────────────────────────────────────
@@ -20,6 +21,7 @@
  */
 import { listAllDrafts, importDrafts } from './draftStore'
 import { listProjects, importProjects } from './projectStore'
+import { listAllTemplates, importTemplates } from './planTemplateStore'
 
 const BACKUP_APP     = 're-former-backup'
 const BACKUP_VERSION = 1
@@ -39,7 +41,7 @@ function readPrefs() {
 }
 
 export async function buildBackup() {
-  const [drafts, projects] = await Promise.all([listAllDrafts(), listProjects()])
+  const [drafts, projects, planTemplates] = await Promise.all([listAllDrafts(), listProjects(), listAllTemplates()])
   return {
     app:        BACKUP_APP,
     version:    BACKUP_VERSION,
@@ -47,6 +49,7 @@ export async function buildBackup() {
     prefs:      readPrefs(),
     drafts,
     projects,
+    planTemplates,
   }
 }
 
@@ -62,6 +65,7 @@ export function summarise(backup) {
     prefs:    Object.keys(backup.prefs || {}).length,
     drafts:   (backup.drafts   || []).length,
     projects: (backup.projects || []).length,
+    planTemplates: (backup.planTemplates || []).length,
   }
 }
 
@@ -87,6 +91,8 @@ export function parseBackup(text) {
     prefs:    data.prefs && typeof data.prefs === 'object' ? data.prefs : {},
     drafts:   Array.isArray(data.drafts)   ? data.drafts   : [],
     projects: Array.isArray(data.projects) ? data.projects : [],
+    // Added after the first backups were made — older files simply don't have it.
+    planTemplates: Array.isArray(data.planTemplates) ? data.planTemplates : [],
   }
 }
 
@@ -100,7 +106,8 @@ export async function applyBackup(backup) {
   }
   const drafts   = await importDrafts(backup.drafts)
   const projects = await importProjects(backup.projects)
-  return { prefs, drafts, projects }
+  const planTemplates = await importTemplates(backup.planTemplates)
+  return { prefs, drafts, projects, planTemplates }
 }
 
 /**
@@ -134,3 +141,4 @@ export async function exportBackupFile() {
   setTimeout(() => URL.revokeObjectURL(url), 10_000)
   return { done: true, summary: summarise(backup) }
 }
+

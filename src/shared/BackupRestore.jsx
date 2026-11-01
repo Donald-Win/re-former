@@ -20,7 +20,7 @@ export function BackupRestore({ accent = APP_ACCENT }) {
     try {
       const { done, summary } = await exportBackupFile()
       if (done) {
-        setStatus({ ok: true, text: `Backed up ${summary.drafts} draft${summary.drafts !== 1 ? 's' : ''}, ${summary.projects} project${summary.projects !== 1 ? 's' : ''} and your saved details.` })
+        setStatus({ ok: true, text: `Backed up ${summary.drafts} draft${summary.drafts !== 1 ? 's' : ''}, ${summary.projects} project${summary.projects !== 1 ? 's' : ''}, ${summary.planTemplates} plan template${summary.planTemplates !== 1 ? 's' : ''} and your saved details.` })
       }
     } catch (err) {
       console.error('[BackupRestore] export failed:', err)
@@ -39,12 +39,12 @@ export function BackupRestore({ accent = APP_ACCENT }) {
       const backup = parseBackup(await file.text())
       const s = summarise(backup)
       const ok = window.confirm(
-        `Restore ${s.drafts} draft${s.drafts !== 1 ? 's' : ''}, ${s.projects} project${s.projects !== 1 ? 's' : ''} and your saved details from this backup?\n\n` +
+        `Restore ${s.drafts} draft${s.drafts !== 1 ? 's' : ''}, ${s.projects} project${s.projects !== 1 ? 's' : ''}, ${s.planTemplates} plan template${s.planTemplates !== 1 ? 's' : ''} and your saved details from this backup?\n\n` +
         'Anything on this device with the same name will be overwritten.'
       )
       if (!ok) { setBusy(false); return }
       const written = await applyBackup(backup)
-      setStatus({ ok: true, text: `Restored ${written.drafts} draft${written.drafts !== 1 ? 's' : ''}, ${written.projects} project${written.projects !== 1 ? 's' : ''}. Reloading…` })
+      setStatus({ ok: true, text: `Restored ${written.drafts} draft${written.drafts !== 1 ? 's' : ''}, ${written.projects} project${written.projects !== 1 ? 's' : ''}, ${written.planTemplates} plan template${written.planTemplates !== 1 ? 's' : ''}. Reloading…` })
       setTimeout(() => window.location.reload(), 1200)
     } catch (err) {
       console.error('[BackupRestore] restore failed:', err)
@@ -105,3 +105,4 @@ export function BackupRestore({ accent = APP_ACCENT }) {
     </div>
   )
 }
+
