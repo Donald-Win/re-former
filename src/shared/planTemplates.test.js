@@ -3,7 +3,7 @@ import {
   cleanTemplateName, sameTemplateName, makeTemplate, templatesFor, findByName,
   cleanImported, planSummary, isSavablePlan, NAME_MAX,
 } from './planTemplates'
-import { emptyPlan, addPoint, addLine, addDim } from './planModel'
+import { emptyPlan, addPoint, addLine, addDim, setNorth } from './planModel'
 
 function samplePlan() {
   let p = emptyPlan()
@@ -81,5 +81,19 @@ describe('planSummary / isSavablePlan', () => {
   it('an empty plan cannot be saved as a template', () => {
     expect(isSavablePlan(emptyPlan())).toBe(false)
     expect(isSavablePlan(samplePlan())).toBe(true)
+  })
+})
+
+describe('north arrow is never carried by a template', () => {
+  it('saving clears north, even when it was set on the plan', () => {
+    const p = setNorth(samplePlan(), 40)
+    const t = makeTemplate({ formKey: 'F', name: 'x', plan: p })
+    expect(t.plan.northSet).toBe(false)
+    expect(t.plan.north).toBe(0)
+    expect(t.plan.els.length).toBe(4)
+  })
+  it('an older saved template with north set is cleared when imported', () => {
+    const t = cleanImported({ id: 'x', formKey: 'F', name: 'Old', plan: setNorth(samplePlan(), 90) })
+    expect(t.plan.northSet).toBe(false)
   })
 })

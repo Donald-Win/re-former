@@ -13,6 +13,15 @@
 
 export const CHANGELOGS = [
   {
+    version: '2.27.1',
+    changes: [
+      {
+        heading: 'Plan templates no longer save the north arrow',
+        detail: "Saved plan templates no longer keep the north arrow. When you load a template, north shows as not set, so you set it for each drawing. This also applies to templates saved before this update.",
+      },
+    ],
+  },
+  {
     version: '2.27.0',
     changes: [
       {
@@ -480,5 +489,4 @@ export const CHANGELOGS = [
     ],
   },
 ]
-
 
