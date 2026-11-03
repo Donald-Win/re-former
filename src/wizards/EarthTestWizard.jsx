@@ -199,7 +199,7 @@ export default function EarthTestWizard({ onClose }) {
         // 3 — Plan & Comments
         <div key="s3">
           <SectionHead label="Dimensioned Plan" sub="Include the north arrow and the earth wire lengths" accent={ACCENT} />
-          <PlanSketchStep plan={d.plan} onChange={p => set('plan', p)} accent={ACCENT} />
+          <PlanSketchStep plan={d.plan} onChange={p => set('plan', p)} formKey={FORM_KEY} accent={ACCENT} />
           <div style={{ height: 1, background: '#eee', margin: '16px 0 14px' }} />
           <SectionHead label="Comments" accent={ACCENT} />
           <WTA label="Comments (e.g. boundary unknown etc.)" v={d.comments} set={set('comments')} rows={3} accent={ACCENT} />

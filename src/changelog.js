@@ -13,6 +13,15 @@
 
 export const CHANGELOGS = [
   {
+    version: '2.27.0',
+    changes: [
+      {
+        heading: 'Plan templates',
+        detail: "You can now save a drawing as a named template, for example 'OH Tx earthing' or 'End of line earth', and load it later as a starting point to adjust. Tap 'Start from a template' on the Plan step, or the Templates button inside the plan editor. Loading a template replaces the current plan with a copy you can edit. Templates are kept separately for each form, and they're included in Backup & Restore.",
+      },
+    ],
+  },
+  {
     version: '2.26.0',
     changes: [
       {

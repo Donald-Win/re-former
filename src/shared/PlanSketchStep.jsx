@@ -35,12 +35,19 @@
  * measure) and otherwise to a grid that gets finer as you zoom. While a
  * line / dimension / shape tool is active the available corner and
  * midpoint targets are shown as small diamonds, and a ring marks the target
- * you're snapped to while dragging. All data and geometry live in planModel.js (unit tested); this file
+ * you're snapped to while dragging.
+ *
+ * Saved templates: when the wizard passes a `formKey`, plans can be saved
+ * under a name and loaded again (per form) from the "Templates" buttons —
+ * see PlanTemplatePicker.jsx.
+ *
+ * All data and geometry live in planModel.js (unit tested); this file
  * is UI. What you see is what prints: the SVG viewBox is the plan box in PDF
  * points.
  */
 import { useState, useRef, useEffect, useLayoutEffect, useMemo, useId } from 'react'
 import { WF, SectionHead } from './WizardInputs'
+import { PlanTemplatePicker } from './PlanTemplatePicker'
 import { APP_ACCENT } from './constants'
 import {
   PLAN_W, PLAN_H, NORTH, LABEL_SIZE, INK,
@@ -331,7 +338,7 @@ function Stepper({ label, value, onChange, accent, min = SIZE_MIN, max = SIZE_MA
 }
 
 // ── The full-screen editor ───────────────────────────────────────────────────
-function PlanEditor({ plan, onChange, onClose, accent }) {
+function PlanEditor({ plan, onChange, onClose, accent, formKey }) {
   const [tool, setTool]       = useState('select')       // select | shape | line | dim | text
   const [shapeKind, setShapeKind] = useState('rect')
   const [shapeColor, setShapeColor] = useState('blue')
@@ -347,6 +354,7 @@ function PlanEditor({ plan, onChange, onClose, accent }) {
   const [zoom, setZoom]       = useState(1)
   const [cw, setCw]           = useState(348)              // width available to the plan at zoom 1, in px
   const [histLen, setHistLen] = useState(0)
+  const [tplOpen, setTplOpen] = useState(false)           // saved-templates sheet
 
   const planRef  = useRef(plan);  planRef.current = plan
   const hist     = useRef([])
@@ -685,7 +693,7 @@ function PlanEditor({ plan, onChange, onClose, accent }) {
       }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 700, fontSize: 15 }}>Dimensioned Plan</div>
-          <div style={{ fontSize: 10, opacity: 0.8 }}>Landscape gives more room</div>
+          <div style={{ fontSize: 10, opacity: 0.8 }}>Pinch to zoom · two fingers to move</div>
         </div>
         <button onClick={undo} disabled={histLen === 0} style={{
           ...btn(false, accent), padding: '7px 10px', opacity: histLen === 0 ? 0.45 : 1,
@@ -710,9 +718,11 @@ function PlanEditor({ plan, onChange, onClose, accent }) {
           style={{ ...btn(false, accent), padding: '4px 13px', fontSize: 16, opacity: zoom >= ZOOM_MAX - 0.001 ? 0.45 : 1 }}>+</button>
         <button onClick={zoomFit} disabled={zoom === 1}
           style={{ ...btn(false, accent), padding: '5px 11px', fontSize: 12, opacity: zoom === 1 ? 0.45 : 1 }}>Fit</button>
-        <div style={{ flex: 1, textAlign: 'right', fontSize: 11, color: '#6b7280', lineHeight: 1.3 }}>
-          Pinch to zoom · two fingers to move
-        </div>
+        <div style={{ flex: 1 }} />
+        {formKey && (
+          <button onClick={() => setTplOpen(true)}
+            style={{ ...btn(false, accent), padding: '5px 11px', fontSize: 12 }}>📁 Templates</button>
+        )}
       </div>
 
       {/* canvas */}
@@ -853,13 +863,23 @@ function PlanEditor({ plan, onChange, onClose, accent }) {
           </div>
         )}
       </div>
+
+      {formKey && (
+        <PlanTemplatePicker
+          open={tplOpen} onClose={() => setTplOpen(false)}
+          formKey={formKey} plan={plan} accent={accent}
+          renderThumb={p => <PlanSvg plan={p} />}
+          onLoad={p => { commit(p); setSelId(null); setPending(null) }}
+        />
+      )}
     </div>
   )
 }
 
 // ── The wizard step: thumbnail + "Edit plan" ─────────────────────────────────
-export function PlanSketchStep({ plan: rawPlan, onChange, accent = APP_ACCENT }) {
+export function PlanSketchStep({ plan: rawPlan, onChange, formKey, accent = APP_ACCENT }) {
   const [editing, setEditing] = useState(false)
+  const [tplOpen, setTplOpen] = useState(false)
   const plan = useMemo(() => normalizePlan(rawPlan), [rawPlan])
 
   const n = t => plan.els.filter(e => e.t === t).length
@@ -901,8 +921,25 @@ export function PlanSketchStep({ plan: rawPlan, onChange, accent = APP_ACCENT })
         )}
       </div>
 
+      {formKey && (
+        <button onClick={() => setTplOpen(true)} style={{
+          width: '100%', marginTop: 8, padding: '11px 0', borderRadius: 12,
+          border: `2px solid ${accent}`, background: accent + '10', color: accent,
+          fontFamily: 'inherit', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+        }}>{empty ? '📁 Start from a template' : '📁 Templates'}</button>
+      )}
+
       {editing && (
-        <PlanEditor plan={plan} onChange={onChange} onClose={() => setEditing(false)} accent={accent} />
+        <PlanEditor plan={plan} onChange={onChange} onClose={() => setEditing(false)} accent={accent} formKey={formKey} />
+      )}
+
+      {formKey && (
+        <PlanTemplatePicker
+          open={tplOpen} onClose={() => setTplOpen(false)}
+          formKey={formKey} plan={plan} accent={accent}
+          renderThumb={p => <PlanSvg plan={p} />}
+          onLoad={onChange}
+        />
       )}
     </div>
   )
