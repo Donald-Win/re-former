@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { EARTH_LAYOUT, POLE_LAYOUT, layoutFor } from './planLayouts'
-import { emptyPlan, normalizePlan, addPoint, snapPoint, hitTest } from './planModel'
+import { emptyPlan, normalizePlan, addPoint, snapPoint, hitTest, setPointSize, pointSize, sizeLimits } from './planModel'
 import { makeTemplate, cleanImported } from './planTemplates'
 import { POLE_SAMPLE_PLAN } from './planSamples'
 
@@ -81,5 +81,48 @@ describe('Earth layout is the default and is unchanged', () => {
   it('an unlisted layout argument behaves exactly like the Earth form', () => {
     const p = normalizePlan({ els: [{ id: 'a', t: 'pt', kind: 'dot', x: 600, y: 300 }] })
     expect([p.els[0].x, p.els[0].y]).toEqual([513, 242])
+  })
+})
+
+describe('shape sizes are limited by the form box, not a fixed cap', () => {
+  const rectAt = (layout) => addPoint(emptyPlan(), 'rect', 100, 100, '', 'r1', {}, layout).plan
+  const circleAt = (layout) => addPoint(emptyPlan(), 'circle', 100, 100, '', 'c1', {}, layout).plan
+
+  it('limits are the box size (circle: shorter side)', () => {
+    expect(sizeLimits('rect', EARTH_LAYOUT)).toEqual({ w: 513, h: 242 })
+    expect(sizeLimits('circle', EARTH_LAYOUT)).toEqual({ w: 242, h: 242 })
+    expect(sizeLimits('rect', POLE_LAYOUT)).toEqual({ w: 510.5, h: 368 })
+    expect(sizeLimits('circle', POLE_LAYOUT)).toEqual({ w: 368, h: 368 })
+  })
+
+  it('a rectangle can be bigger than the old 120 cap on the Earth form', () => {
+    const p = setPointSize(rectAt(EARTH_LAYOUT), 'r1', 200, 200, EARTH_LAYOUT)
+    expect(pointSize(p.els[0])).toEqual({ w: 200, h: 200 })
+  })
+
+  it('a rectangle reaches the full height of the Earth box, and no further', () => {
+    const p = setPointSize(rectAt(EARTH_LAYOUT), 'r1', 400, 400, EARTH_LAYOUT)
+    expect(pointSize(p.els[0])).toEqual({ w: 400, h: 242 })
+  })
+
+  it('a circle is capped by the shorter side of the box', () => {
+    const p = setPointSize(circleAt(EARTH_LAYOUT), 'c1', 400, 400, EARTH_LAYOUT)
+    expect(pointSize(p.els[0])).toEqual({ w: 242, h: 242 })
+  })
+
+  it('on the pole form a tall rectangle keeps its full height', () => {
+    const p = setPointSize(rectAt(POLE_LAYOUT), 'r1', 300, 350, POLE_LAYOUT)
+    expect(pointSize(p.els[0])).toEqual({ w: 300, h: 350 })
+  })
+
+  it('saved sizes above the old cap survive loading on the pole form', () => {
+    const p = normalizePlan({ els: [{ id: 'a', t: 'pt', kind: 'rect', x: 100, y: 200, w: 300, h: 350 }] }, POLE_LAYOUT)
+    expect(pointSize(p.els[0])).toEqual({ w: 300, h: 350 })
+  })
+
+  it('the dot stays one fixed size and cannot be resized', () => {
+    const p = addPoint(emptyPlan(), 'dot', 100, 100, '', 'd1', {}, POLE_LAYOUT).plan
+    const after = setPointSize(p, 'd1', 60, 60, POLE_LAYOUT)
+    expect(pointSize(after.els[0])).toEqual({ w: 7.5, h: 7.5 })
   })
 })

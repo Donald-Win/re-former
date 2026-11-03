@@ -13,6 +13,15 @@
 
 export const CHANGELOGS = [
   {
+    version: '2.28.1',
+    changes: [
+      {
+        heading: 'Rectangles and circles can be made bigger',
+        detail: "Rectangles and circles on the plan used to stop growing at a fixed size, which was too small for large features. They can now be resized up to the full size of the plan box: a rectangle up to the full width and height, a circle up to the full height of the box. The dot is still a fixed size.",
+      },
+    ],
+  },
+  {
     version: '2.28.0',
     changes: [
       {

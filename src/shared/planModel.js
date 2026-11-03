@@ -109,7 +109,17 @@ export const LABEL_POSITIONS = [
 const LABEL_POS_IDS = new Set(LABEL_POSITIONS.map(o => o.id))
 
 export const SIZE_MIN = 3
-export const SIZE_MAX = 120
+
+/**
+ * Largest width / height a shape may take on a form: the plan box itself. A
+ * circle's diameter is capped by the shorter side of the box. Stored sizes are
+ * clamped to these limits whenever they are written (setPointSize, normalizePlan).
+ */
+export function sizeLimits(kind, L = EARTH_LAYOUT) {
+  const { w, h } = L.box
+  if (pointKind(kind).shape === 'circle') return { w: Math.min(w, h), h: Math.min(w, h) }
+  return { w, h }
+}
 
 export const DIM_ORIENTS = [
   { id: 'aligned',    label: 'Aligned' },
@@ -192,8 +202,9 @@ export function normalizePlan(raw, L = EARTH_LAYOUT) {
       if (!kind) continue
       const el = { id: e.id, t: 'pt', kind, x: cx_(e.x), y: cy_(e.y), label }
       if (!pointKind(kind).fixed) {                       // fixed-size kinds (the dot) never carry a size
-        if (isNum(e.w)) el.w = clamp(e.w, SIZE_MIN, SIZE_MAX)
-        if (isNum(e.h)) el.h = clamp(e.h, SIZE_MIN, SIZE_MAX)
+        const lim = sizeLimits(kind, L)
+        if (isNum(e.w)) el.w = clamp(e.w, SIZE_MIN, lim.w)
+        if (isNum(e.h)) el.h = clamp(e.h, SIZE_MIN, lim.h)
       }
       el.color = COLOR_IDS.has(e.color) ? e.color : 'blue'
       if (kind !== 'text') el.labelPos = LABEL_POS_IDS.has(e.labelPos) ? e.labelPos : 'right'
@@ -264,18 +275,20 @@ export function pointSize(el) {
   if (k.shape === 'none') return { w: 0, h: 0 }
   const def = k.r * 2
   if (k.fixed) return { w: def, h: def }
-  const w = isNum(el.w) ? clamp(el.w, SIZE_MIN, SIZE_MAX) : def
-  const h = k.shape === 'circle' ? w : (isNum(el.h) ? clamp(el.h, SIZE_MIN, SIZE_MAX) : def)
+  // Stored sizes are clamped to the form's box when written, so only the floor is checked here.
+  const w = isNum(el.w) ? Math.max(SIZE_MIN, el.w) : def
+  const h = k.shape === 'circle' ? w : (isNum(el.h) ? Math.max(SIZE_MIN, el.h) : def)
   return { w, h }
 }
 
-export function setPointSize(plan, id, w, h) {
+export function setPointSize(plan, id, w, h, L = EARTH_LAYOUT) {
   return {
     ...plan,
     els: plan.els.map(e => {
       if (e.id !== id || e.t !== 'pt' || pointKind(e.kind).fixed) return e
-      const ww = clamp(Math.round(w), SIZE_MIN, SIZE_MAX)
-      const hh = pointKind(e.kind).shape === 'circle' ? ww : clamp(Math.round(h), SIZE_MIN, SIZE_MAX)
+      const lim = sizeLimits(e.kind, L)
+      const ww = clamp(Math.round(w), SIZE_MIN, lim.w)
+      const hh = pointKind(e.kind).shape === 'circle' ? ww : clamp(Math.round(h), SIZE_MIN, lim.h)
       return { ...e, w: ww, h: hh }
     }),
   }

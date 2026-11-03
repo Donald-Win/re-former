@@ -3,7 +3,7 @@ import {
   emptyPlan, normalizePlan, addPoint, addLine, addDim, removeEl, updateEl, setNorth,
   snapPoint, vertexRefs, dragRefs, moveVertex, hitTest, labelLayout,
   angleFromNorthCentre, northGeometry, distToSegment, PLAN_W, PLAN_H, NORTH,
-  pointSize, setPointSize, resizeHandle, sizeFromHandle, SIZE_MIN, SIZE_MAX,
+  pointSize, setPointSize, resizeHandle, sizeFromHandle, SIZE_MIN,
   lineDash, lineWidth, dimGeometry, dimHandle, clampOffset, setDimOffset, offsetFromPoint,
   labelColor, colorOf, DIM_DEFAULT_OFFSET, snapTargets, LABEL_POSITIONS,
 } from './planModel'
@@ -341,12 +341,12 @@ describe('shape sizes', () => {
   it('sizes are rounded and clamped; circles keep w = h', () => {
     let p = addPoint(emptyPlan(), 'rect', 100, 100, '', 'r1').plan
     p = addPoint(p, 'circle', 50, 50, '', 'c1').plan
-    expect(pointSize(setPointSize(p, 'r1', 1, 9999).els[0])).toEqual({ w: SIZE_MIN, h: SIZE_MAX })
+    expect(pointSize(setPointSize(p, 'r1', 1, 9999).els[0])).toEqual({ w: SIZE_MIN, h: 242 })
     expect(pointSize(setPointSize(p, 'c1', 12.4, 99).els[1])).toEqual({ w: 12, h: 12 })
   })
   it('normalizePlan keeps and clamps stored sizes', () => {
     const p = normalizePlan({ els: [{ id: 'a', t: 'pt', kind: 'rect', x: 10, y: 10, w: 40, h: 9999 }] })
-    expect(pointSize(p.els[0])).toEqual({ w: 40, h: SIZE_MAX })
+    expect(pointSize(p.els[0])).toEqual({ w: 40, h: 242 })
   })
 })
 
@@ -604,3 +604,4 @@ describe('snapping to centres, corners and midpoints', () => {
     expect([p.els[1].x1, p.els[1].y1]).toEqual([180, 90])
   })
 })
+

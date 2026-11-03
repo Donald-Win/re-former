@@ -55,7 +55,7 @@ import {
   COLORS, LINE_PATTERNS, LINE_WEIGHTS, POINT_KINDS, DIM_ORIENTS, LABEL_POSITIONS,
   colorOf, linePattern, lineWeight, lineDash, lineWidth, pointKind, labelColor,
   normalizePlan, emptyPlan, addPoint, addLine, addDim, updateEl, removeEl, setNorth,
-  pointSize, setPointSize, resizeHandle, sizeFromHandle, SIZE_MIN, SIZE_MAX,
+  pointSize, setPointSize, resizeHandle, sizeFromHandle, sizeLimits, SIZE_MIN,
   dimGeometry, dimHandle, offsetFromPoint, setDimOffset,
   snapPoint, snapTargets, dragRefs, moveVertex, hitTest, labelLayout,
   angleFromNorthCentre, northGeometry,
@@ -328,7 +328,7 @@ function ColorDots({ value, onPick }) {
 }
 
 // − value + control. `min`/`max` bound it; step is 2 units.
-function Stepper({ label, value, onChange, accent, min = SIZE_MIN, max = SIZE_MAX }) {
+function Stepper({ label, value, onChange, accent, min = SIZE_MIN, max }) {
   const bump = d => onChange(Math.min(max, Math.max(min, Math.round(value + d))))
   const sb = { ...btn(false, accent), padding: '6px 14px', fontSize: 16, lineHeight: 1 }
   return (
@@ -570,7 +570,7 @@ function PlanEditor({ plan, onChange, onClose, accent, formKey }) {
       const el = g.base.els.find(x => x.id === g.hit.id)
       const sz = sizeFromHandle(el, p.x, p.y, 6 / ppu)
       if (!g.pushed) { pushHistory(g.base); g.pushed = true }
-      onChange(setPointSize(g.base, el.id, sz.w, sz.h))
+      onChange(setPointSize(g.base, el.id, sz.w, sz.h, layout))
     } else if (g.kind === 'offset') {
       const p  = toPlan(e)
       const el = g.base.els.find(x => x.id === g.hit.id)
@@ -664,7 +664,7 @@ function PlanEditor({ plan, onChange, onClose, accent, formKey }) {
     onChange(updateEl(cur, id, { label: v }))
   }
   const changeProp = (id, patch) => commit(updateEl(planRef.current, id, patch))
-  const resizeSel  = (id, w, h) => commit(setPointSize(planRef.current, id, w, h))
+  const resizeSel  = (id, w, h) => commit(setPointSize(planRef.current, id, w, h, layout))
   const offsetSel  = (id, off) => commit(setDimOffset(planRef.current, id, off, layout))
   const deleteSel  = () => { commit(removeEl(planRef.current, selId)); setSelId(null) }
 
@@ -842,11 +842,11 @@ function PlanEditor({ plan, onChange, onClose, accent, formKey }) {
                   <LabelPosChips value={sel.labelPos} onPick={o => changeProp(sel.id, { labelPos: o })} accent={accent} />
                   {!fixed && <div style={{ marginTop: 8 }}>
                     {round ? (
-                      <Stepper label="Size" value={w} accent={accent} onChange={v => resizeSel(sel.id, v, v)} />
+                      <Stepper label="Size" value={w} accent={accent} onChange={v => resizeSel(sel.id, v, v)} max={sizeLimits(sel.kind, layout).w} />
                     ) : (
                       <>
-                        <Stepper label="Width"  value={w} accent={accent} onChange={v => resizeSel(sel.id, v, h)} />
-                        <Stepper label="Height" value={h} accent={accent} onChange={v => resizeSel(sel.id, w, v)} />
+                        <Stepper label="Width"  value={w} accent={accent} onChange={v => resizeSel(sel.id, v, h)} max={sizeLimits(sel.kind, layout).w} />
+                        <Stepper label="Height" value={h} accent={accent} onChange={v => resizeSel(sel.id, w, v)} max={sizeLimits(sel.kind, layout).h} />
                         <button onClick={() => resizeSel(sel.id, w, w)} style={{ ...btn(false, accent), padding: '6px 12px', fontSize: 12 }}>
                           Make square
                         </button>
