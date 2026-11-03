@@ -9,7 +9,7 @@
  * spot on the screen — under the fingers during a pinch, or under the centre
  * of the view for the +/− buttons.
  */
-import { PLAN_W, PLAN_H } from './planModel'
+import { EARTH_LAYOUT } from './planLayouts'
 
 export const ZOOM_MIN = 1
 export const ZOOM_MAX = 6
@@ -36,11 +36,12 @@ export function zoomFromPinch(z0, d0, d) {
  * The browser clamps scrollLeft/Top to what's scrollable, so out-of-range
  * values are harmless.
  */
-export function scrollForAnchor({ px, py, zoom, contentW, pad, clientX, clientY, viewLeft, viewTop }) {
+export function scrollForAnchor({ px, py, zoom, contentW, pad, clientX, clientY, viewLeft, viewTop, layout = EARTH_LAYOUT }) {
   const svgW = contentW * zoom
-  const svgH = svgW * (PLAN_H / PLAN_W)
+  const svgH = svgW * (layout.box.h / layout.box.w)
   return {
-    left: pad + (px / PLAN_W) * svgW - (clientX - viewLeft),
-    top:  pad + (py / PLAN_H) * svgH - (clientY - viewTop),
+    left: pad + (px / layout.box.w) * svgW - (clientX - viewLeft),
+    top:  pad + (py / layout.box.h) * svgH - (clientY - viewTop),
   }
 }
+

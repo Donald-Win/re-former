@@ -26,6 +26,7 @@ import {
   cleanTemplateName, findByName, planSummary, isSavablePlan, NAME_MAX, withoutNorth,
 } from './planTemplates'
 import { APP_ACCENT } from './constants'
+import { layoutFor } from './planLayouts'
 import { wInp, wLbl } from './WizardInputs'
 
 export function PlanTemplatePicker({ open, onClose, formKey, plan, onLoad, renderThumb, accent = APP_ACCENT }) {
@@ -84,7 +85,7 @@ export function PlanTemplatePicker({ open, onClose, formKey, plan, onLoad, rende
   const handleLoad = (t) => {
     const hasPlan = isSavablePlan(plan)
     if (hasPlan && !window.confirm(`Replace the current plan with "${t.name}"?`)) return
-    onLoad(withoutNorth(t.plan))
+    onLoad(withoutNorth(t.plan, layoutFor(formKey)))
     onClose()
   }
 
@@ -190,7 +191,7 @@ export function PlanTemplatePicker({ open, onClose, formKey, plan, onLoad, rende
                     textAlign: 'left', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 12, minWidth: 0,
                   }}>
                     <div style={{ width: 110, flexShrink: 0, border: '1px solid #e5e7eb', borderRadius: 6, overflow: 'hidden', pointerEvents: 'none' }}>
-                      {renderThumb ? renderThumb(withoutNorth(t.plan)) : null}
+                      {renderThumb ? renderThumb(withoutNorth(t.plan, layoutFor(formKey))) : null}
                     </div>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontWeight: 700, fontSize: 14, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.name}</div>
@@ -215,3 +216,4 @@ export function PlanTemplatePicker({ open, onClose, formKey, plan, onLoad, rende
     </>
   )
 }
+

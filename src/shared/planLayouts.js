@@ -1,0 +1,37 @@
+/**
+ * planLayouts.js — where the plan box sits on each form, and whether the
+ * form prints a north circle. Pure data (no imports), so the editor and the
+ * PDF worker share it.
+ *
+ *   box   — top-left and size of the printed plan box, PDF points, top-origin
+ *   north — printed north circle { cx, cy, r } relative to the box, or null
+ *           when the form prints none (the editor then hides the north control)
+ *
+ * Any form not listed falls back to EARTH_LAYOUT, so existing plans keep
+ * working. Add every new plan-enabled form to BY_FORM.
+ */
+
+// 360S014EJ — Earth Installation and Test Record (measured earlier)
+export const EARTH_LAYOUT = Object.freeze({
+  box: Object.freeze({ x: 40, y: 458, w: 513, h: 242 }),
+  north: Object.freeze({ cx: 31.75, cy: 32.5, r: 23 }),
+})
+
+// 360S014EC — Pole Record, page 3 "WORK PLAN AND DESCRIPTION" box.
+// Measured from a 144 dpi raster of the form (1 px = 0.5 pt): the box is
+// bounded by rules at x 42.5 and 553.0 and y 138.0 and 506.0. No printed grid
+// and no printed north circle.
+export const POLE_LAYOUT = Object.freeze({
+  box: Object.freeze({ x: 42.5, y: 138, w: 510.5, h: 368 }),
+  north: null,
+})
+
+const BY_FORM = {
+  '360S014EJ': EARTH_LAYOUT,
+  '360S014EC': POLE_LAYOUT,
+}
+
+/** The layout for a form code. Unknown codes get the Earth layout. */
+export function layoutFor(formKey) {
+  return BY_FORM[formKey] || EARTH_LAYOUT
+}

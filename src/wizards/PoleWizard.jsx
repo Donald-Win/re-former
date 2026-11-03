@@ -9,8 +9,11 @@ import { useDraft, useCrashRecovery } from '../shared/useDraft'
 import { DraftPicker } from '../shared/DraftPicker'
 import { useDraftPicker } from '../shared/useDraftPicker'
 import { CrashRecoveryBanner } from '../shared/CrashRecoveryBanner'
-import { wInp, wLbl, WF, WTA, WCB } from '../shared/WizardInputs'
+import { wInp, wLbl, WF, WTA, WCB, SectionHead } from '../shared/WizardInputs'
 import { PhotoAttachStep } from '../shared/PhotoAttachStep'
+import { PlanSketchStep } from '../shared/PlanSketchStep'
+import { emptyPlan } from '../shared/planModel'
+import { POLE_SAMPLE_PLAN } from '../shared/planSamples'
 import { GpsCoordButton } from '../shared/GpsCoordButton'
 import { sharePdf, buildPdfFilename } from '../shared/sharePdf'
 import { getBaseFormState } from '../shared/userPrefs'
@@ -32,6 +35,7 @@ const W_STEPS = [
   'Accessories',
   'Conductors',
   'Crossarms',
+  'Work Plan',
   'Work Description',
   'Photos',
   'Preview & Print',
@@ -297,6 +301,7 @@ function PoleRecordWizard({ onClose }) {
     conductors: [{ level: '1', existing: '', size: '', material: '', insulation: '', picker: null }],
     crossarms:  [{ level: '1', existing: '', voltage: '', endSize: '', length: '', arms: '', insulatorType: '', armMaterial: '', wires: '' }],
     accessories: [],
+    plan: emptyPlan(),
   }))
   const [photos, setPhotos] = useState([])
 
@@ -351,7 +356,7 @@ function PoleRecordWizard({ onClose }) {
 
   // ── Shared hooks ──────────────────────────────────────────────────────────
 
-  const { set, handleDevFill } = useWizardSetup(d, setD, step, '360S014EC')
+  const { set, handleDevFill } = useWizardSetup(d, setD, step, '360S014EC', { plan: POLE_SAMPLE_PLAN })
   const { clearDraft: clearFormDraft } = useDraft('360S014EC', d, step, photos)
   const crashRecovery = useCrashRecovery({ formKey: '360S014EC', setD, setStep, setPhotos, maxStep: W_STEPS.length - 2 })
 
@@ -690,7 +695,15 @@ function PoleRecordWizard({ onClose }) {
       )
 
       case 7: return (
-        // 7 — Work Description
+        // 7 — Work Plan
+        <div key="7">
+          <SectionHead label="Work Plan" sub="Show the previous pole and its number, the new pole, the circuit between them and any LV break positions." accent={W_PURPLE} />
+          <PlanSketchStep plan={d.plan} onChange={p => set('plan', p)} formKey="360S014EC" accent={W_PURPLE} />
+        </div>
+      )
+
+      case 8: return (
+        // 8 — Work Description
         <div key="7">
           <div style={{ fontSize:13, color:'#777', marginBottom:10 }}>
             Illustrate asset location if the pole is new or has been moved more than 1 metre. Show any LV break positions.
@@ -699,8 +712,8 @@ function PoleRecordWizard({ onClose }) {
         </div>
       )
 
-      case 8: return (
-        // 8 — Photos
+      case 9: return (
+        // 9 — Photos
         <div key="8">
           <PhotoAttachStep photos={photos} onChange={setPhotos} accent={W_PURPLE} />
         </div>
@@ -753,4 +766,5 @@ function PoleRecordWizard({ onClose }) {
 }
 
 export default PoleRecordWizard
+
 

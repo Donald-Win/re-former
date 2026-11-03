@@ -13,6 +13,15 @@
 
 export const CHANGELOGS = [
   {
+    version: '2.28.0',
+    changes: [
+      {
+        heading: 'Pole Record — Work Plan',
+        detail: "The Pole Record has a new Work Plan step, just before Work Description. Draw the job in the box on page 3 of the form: the old pole and its number, the new pole, the circuits between them, LV break positions and any kerb or road. Shapes, lines, dimensions and text work the same as on the Earth Test plan, and you can save a plan as a template for next time. There is no north arrow on this form, so none is drawn.",
+      },
+    ],
+  },
+  {
     version: '2.27.1',
     changes: [
       {
@@ -489,4 +498,5 @@ export const CHANGELOGS = [
     ],
   },
 ]
+
 

@@ -1,3 +1,5 @@
+import { EARTH_LAYOUT } from './planLayouts'
+
 /**
  * planModel.js — data model + pure geometry for the structured "Dimensioned
  * PLAN" sketch (used by PlanSketchStep.jsx for editing and planPdf.js for
@@ -45,10 +47,10 @@
 // Measured from the form's light-blue grid. `x`/`y` are the box's top-left
 // in top-origin PDF points; NORTH is the printed circle ("Include North arrow
 // in circle"), relative to the box.
-export const PLAN_BOX = { x: 40, y: 458, w: 513, h: 242 }
+export const PLAN_BOX = EARTH_LAYOUT.box
 export const PLAN_W = PLAN_BOX.w
 export const PLAN_H = PLAN_BOX.h
-export const NORTH = { cx: 31.75, cy: 32.5, r: 23 }
+export const NORTH = EARTH_LAYOUT.north
 
 export const LABEL_SIZE = 8
 
@@ -155,10 +157,10 @@ export function labelRgb(el) {
 
 // ── Small helpers ───────────────────────────────────────────────────────────
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v))
-const cx_ = x => clamp(x, 0, PLAN_W)
-const cy_ = y => clamp(y, 0, PLAN_H)
 const isNum = v => typeof v === 'number' && Number.isFinite(v)
-const inBox = (x, y) => x >= 0 && x <= PLAN_W && y >= 0 && y <= PLAN_H
+const inBox = (x, y, L = EARTH_LAYOUT) => x >= 0 && x <= L.box.w && y >= 0 && y <= L.box.h
+/** Clamp helpers bound to one layout: clampTo(L).cx(x) keeps x inside that form's box. */
+const clampTo = L => ({ cx: x => clamp(x, 0, L.box.w), cy: y => clamp(y, 0, L.box.h) })
 
 export function newId() {
   return 'e' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
@@ -177,8 +179,9 @@ const LEGACY_POINT = { pole: 'circle', tx: 'rect', box: 'rect', rod: 'dot' }
  * unknown kinds / non-numeric coordinates are dropped, coordinates are
  * clamped into the box. Used when loading drafts and crash-recovery data.
  */
-export function normalizePlan(raw) {
+export function normalizePlan(raw, L = EARTH_LAYOUT) {
   if (!raw || typeof raw !== 'object') return emptyPlan()
+  const { cx: cx_, cy: cy_ } = clampTo(L)
   const els = []
   for (const e of Array.isArray(raw.els) ? raw.els : []) {
     if (!e || typeof e.id !== 'string') continue
@@ -213,28 +216,32 @@ export function normalizePlan(raw) {
         x1: cx_(e.x1), y1: cy_(e.y1), x2: cx_(e.x2), y2: cy_(e.y2),
         offset: isNum(e.offset) ? e.offset : DIM_DEFAULT_OFFSET, label,
       }
-      el.offset = clampOffset(el, el.offset)
+      el.offset = clampOffset(el, el.offset, L)
       els.push(el)
     }
   }
+  if (!L.north) return { v: 1, north: 0, northSet: false, els }
   const north = isNum(raw.north) ? ((raw.north % 360) + 360) % 360 : 0
   return { v: 1, north, northSet: !!raw.northSet, els }
 }
 
 // ── Edits (all return a NEW plan; nothing mutates) ──────────────────────────
-export function addPoint(plan, kind, x, y, label = '', id = newId(), extra = {}) {
+export function addPoint(plan, kind, x, y, label = '', id = newId(), extra = {}, L = EARTH_LAYOUT) {
+  const { cx: cx_, cy: cy_ } = clampTo(L)
   const el = { id, t: 'pt', kind, x: cx_(x), y: cy_(y), label, ...extra }
   return { plan: { ...plan, els: [...plan.els, el] }, id }
 }
 
-export function addLine(plan, pattern, color, weight, x1, y1, x2, y2, label = '', id = newId()) {
+export function addLine(plan, pattern, color, weight, x1, y1, x2, y2, label = '', id = newId(), L = EARTH_LAYOUT) {
+  const { cx: cx_, cy: cy_ } = clampTo(L)
   const el = { id, t: 'ln', pattern, color, weight, x1: cx_(x1), y1: cy_(y1), x2: cx_(x2), y2: cy_(y2), label }
   return { plan: { ...plan, els: [...plan.els, el] }, id }
 }
 
-export function addDim(plan, color, orient, x1, y1, x2, y2, offset = DIM_DEFAULT_OFFSET, label = '', id = newId()) {
+export function addDim(plan, color, orient, x1, y1, x2, y2, offset = DIM_DEFAULT_OFFSET, label = '', id = newId(), L = EARTH_LAYOUT) {
+  const { cx: cx_, cy: cy_ } = clampTo(L)
   const el = { id, t: 'dim', color, orient, x1: cx_(x1), y1: cy_(y1), x2: cx_(x2), y2: cy_(y2), offset, label }
-  el.offset = clampOffset(el, offset)
+  el.offset = clampOffset(el, offset, L)
   return { plan: { ...plan, els: [...plan.els, el] }, id }
 }
 
@@ -374,20 +381,20 @@ export function dimGeometry(el) {
 }
 
 /** Keep a dimension line inside the plan box, and round to a whole unit. */
-export function clampOffset(el, off) {
+export function clampOffset(el, off, L = EARTH_LAYOUT) {
   let o = Math.round(off)
   const fits = v => {
     const { a, b } = dimEnds(el, v)
-    return inBox(a.x, a.y) && inBox(b.x, b.y)
+    return inBox(a.x, a.y, L) && inBox(b.x, b.y, L)
   }
   while (o !== 0 && !fits(o)) o -= Math.sign(o)
   return o
 }
 
-export function setDimOffset(plan, id, off) {
+export function setDimOffset(plan, id, off, L = EARTH_LAYOUT) {
   return {
     ...plan,
-    els: plan.els.map(e => (e.id === id && e.t === 'dim' ? { ...e, offset: clampOffset(e, off) } : e)),
+    els: plan.els.map(e => (e.id === id && e.t === 'dim' ? { ...e, offset: clampOffset(e, off, L) } : e)),
   }
 }
 
@@ -484,7 +491,8 @@ export function snapTargets(plan) {
  * those vertices, and the corners/midpoints of the elements they belong to,
  * are ignored so a shape can't snap to itself. Returns { x, y, snapped, kind }.
  */
-export function snapPoint(plan, x, y, { step = 8, tol = 8, exclude = [] } = {}) {
+export function snapPoint(plan, x, y, { step = 8, tol = 8, exclude = [], layout = EARTH_LAYOUT } = {}) {
+  const { cx: cx_, cy: cy_ } = clampTo(layout)
   const skipRefs = new Set(exclude.map(refKey))
   const skipIds  = new Set(exclude.map(r => r.id))
   // Corners / midpoints count as slightly further away than they are, so on a
@@ -524,7 +532,8 @@ export function vertexRefs(plan, x, y, eps = 0.6) {
     .map(v => v.ref)
 }
 
-export function moveVertex(plan, refs, x, y) {
+export function moveVertex(plan, refs, x, y, L = EARTH_LAYOUT) {
+  const { cx: cx_, cy: cy_ } = clampTo(L)
   const nx = cx_(x), ny = cy_(y)
   const byId = new Map()
   for (const r of refs) byId.set(r.id, [...(byId.get(r.id) || []), r.end])
@@ -537,7 +546,7 @@ export function moveVertex(plan, refs, x, y) {
       let next = e
       if (ends.includes(1)) next = { ...next, x1: nx, y1: ny }
       if (ends.includes(2)) next = { ...next, x2: nx, y2: ny }
-      if (next.t === 'dim') next = { ...next, offset: clampOffset(next, next.offset) }
+      if (next.t === 'dim') next = { ...next, offset: clampOffset(next, next.offset, L) }
       return next
     }),
   }
@@ -561,8 +570,9 @@ function bodySegments(e) {
  * { type:'resize', id } | { type:'pt', id } | { type:'ln', id } | null.
  * (Lines and dimensions both report 'ln'; look the element up for its `t`.)
  */
-export function hitTest(plan, x, y, { tol = 10, selectedId = null, handleOff = 0 } = {}) {
-  if (Math.hypot(x - NORTH.cx, y - NORTH.cy) <= NORTH.r) return { type: 'north' }
+export function hitTest(plan, x, y, { tol = 10, selectedId = null, handleOff = 0, layout = EARTH_LAYOUT } = {}) {
+  const N = layout.north
+  if (N && Math.hypot(x - N.cx, y - N.cy) <= N.r) return { type: 'north' }
 
   const sel = plan.els.find(e => e.id === selectedId)
   if (sel && sel.t === 'dim') {
@@ -665,13 +675,15 @@ export function labelLayout(el) {
 
 // ── North arrow ─────────────────────────────────────────────────────────────
 /** Angle (degrees clockwise from up, snapped to 5°) of (x,y) around the north circle. */
-export function angleFromNorthCentre(x, y) {
+export function angleFromNorthCentre(x, y, L = EARTH_LAYOUT) {
+  const NORTH = L.north
   const deg = (Math.atan2(x - NORTH.cx, -(y - NORTH.cy)) * 180) / Math.PI
   return ((Math.round(deg / 5) * 5) % 360 + 360) % 360
 }
 
 /** Points for drawing the arrow inside the printed circle, in plan coordinates. */
-export function northGeometry(deg) {
+export function northGeometry(deg, L = EARTH_LAYOUT) {
+  const NORTH = L.north
   const a = (deg * Math.PI) / 180
   const dir = { x: Math.sin(a), y: -Math.cos(a) }
   const at = (k) => ({ x: NORTH.cx + dir.x * k, y: NORTH.cy + dir.y * k })
@@ -684,3 +696,4 @@ export function northGeometry(deg) {
   const rad150 = (150 * Math.PI) / 180
   return { head, tail, wings: [wing(rad150), wing(-rad150)], label: at(NORTH.r + 7) }
 }
+
