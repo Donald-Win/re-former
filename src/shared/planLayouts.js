@@ -26,9 +26,22 @@ export const POLE_LAYOUT = Object.freeze({
   north: null,
 })
 
+// 360S014EB — Electrical Distribution Record, page 1 "Dimensioned PLAN" box.
+// Measured from a 144 dpi raster (1 px = 0.5 pt). The box is the printed light-blue
+// grid, x 42.5–565.0 pt and y 426.0–664.0 pt (no dark border). The top edge is the
+// outer edge of the grid, which has a short strip of vertical rules above the first
+// full horizontal rule (437.25 pt). The printed north circle is centred at
+// (76.25, 459.0) pt with radius 22.75 pt, i.e. (33.75, 33.0) relative to the box.
+// The box top is unconfirmed: check it on the first test print.
+export const EB_LAYOUT = Object.freeze({
+  box: Object.freeze({ x: 42.5, y: 426, w: 522.5, h: 238 }),
+  north: Object.freeze({ cx: 33.75, cy: 33, r: 22.75 }),
+})
+
 const BY_FORM = {
   '360S014EJ': EARTH_LAYOUT,
   '360S014EC': POLE_LAYOUT,
+  '360S014EB': EB_LAYOUT,
 }
 
 /** The layout for a form code. Unknown codes get the Earth layout. */

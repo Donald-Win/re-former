@@ -5,6 +5,9 @@ import { Zap } from 'lucide-react'
 import { WizardShell } from '../shared/WizardShell'
 import { WF, WTA, WCB, SectionHead } from '../shared/WizardInputs'
 import { PhotoAttachStep } from '../shared/PhotoAttachStep'
+import { PlanSketchStep } from '../shared/PlanSketchStep'
+import { emptyPlan } from '../shared/planModel'
+import { EB_SAMPLE_PLAN } from '../shared/planSamples'
 import { sharePdf, buildPdfFilename } from '../shared/sharePdf'
 import { getBaseFormState } from '../shared/userPrefs'
 import { JobDetailsStep } from '../shared/JobDetailsStep'
@@ -28,7 +31,8 @@ const EB_STEPS = [
   'Job Details',
   'Distribution Main',
   'Underground Details',
-  'Comments & Plan',
+  'Dimensioned Plan',
+  'Comments',
   'Photos',
   'Preview & Print',
 ]
@@ -90,6 +94,7 @@ export default function ElecDistributionWizard({ onClose }) {
     otherServicesInTrench: [], otherServicesOther: '',
     gpsRequired: '', gpsFiles: '',
     comments: '',
+    plan: emptyPlan(),
   }))
   const [photos, setPhotos]       = useState([])
 
@@ -125,7 +130,7 @@ export default function ElecDistributionWizard({ onClose }) {
     !d.signed           && 'Signature',
   ].filter(Boolean)
 
-  const { set, handleDevFill } = useWizardSetup(d, setD, step, '360S014EB')
+  const { set, handleDevFill } = useWizardSetup(d, setD, step, '360S014EB', { plan: EB_SAMPLE_PLAN })
   const { clearDraft: clearFormDraft } = useDraft('360S014EB', d, step, photos)
   const crashRecovery = useCrashRecovery({ formKey: '360S014EB', setD, setStep, setPhotos, maxStep: EB_STEPS.length - 2 })
 
@@ -221,25 +226,29 @@ export default function ElecDistributionWizard({ onClose }) {
       )
 
       case 3: return (
-        // 3 — Comments & Plan
+        // 3 — Dimensioned Plan
         <div key="s3">
-          <SectionHead label="Dimensioned Plan" accent={EB_ORANGE} />
-          <div style={{ background: EB_BG, border: `1px solid ${EB_BORDER}`, borderRadius: 8, padding: '10px 14px', marginBottom: 14, fontSize: 13, color: '#9a3412', lineHeight: 1.5 }}>
-            <strong>📐 Location plan:</strong> Draw the dimensioned plan manually on the printed form.
-          </div>
+          <SectionHead label="Dimensioned Plan" sub="Include the north arrow in the circle. Dimension cables at right angles to known reference points." accent={EB_ORANGE} />
+          <PlanSketchStep plan={d.plan} onChange={p => set('plan', p)} formKey="360S014EB" accent={EB_ORANGE} />
+        </div>
+      )
+
+      case 4: return (
+        // 4 — Comments
+        <div key="s4">
           <SectionHead label="Comments" accent={EB_ORANGE} />
           <WTA label="Comments (e.g. boundary unknown etc.)" v={d.comments} set={v => set('comments', v)} accent={EB_ORANGE} rows={4} />
         </div>
       )
 
-      case 4: return (
-        // 4 — Photos
-        <div key="s4">
+      case 5: return (
+        // 5 — Photos
+        <div key="s5">
           <PhotoAttachStep photos={photos} onChange={setPhotos} accent={EB_ORANGE} />
         </div>
       )
 
-      case 5: return null
+      case 6: return null
 
       default: return null
     }
@@ -282,3 +291,4 @@ export default function ElecDistributionWizard({ onClose }) {
     </>
   )
 }
+

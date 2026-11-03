@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { EARTH_LAYOUT, POLE_LAYOUT, layoutFor } from './planLayouts'
+import { EARTH_LAYOUT, POLE_LAYOUT, EB_LAYOUT, layoutFor } from './planLayouts'
 import { emptyPlan, normalizePlan, addPoint, snapPoint, hitTest, setPointSize, pointSize, sizeLimits } from './planModel'
 import { makeTemplate, cleanImported } from './planTemplates'
-import { POLE_SAMPLE_PLAN } from './planSamples'
+import { POLE_SAMPLE_PLAN, EB_SAMPLE_PLAN } from './planSamples'
+import { northGeometry } from './planModel'
 
 const pointsOf = e => {
   if (e.t === 'pt') return [[e.x, e.y]]
@@ -124,5 +125,47 @@ describe('shape sizes are limited by the form box, not a fixed cap', () => {
     const p = addPoint(emptyPlan(), 'dot', 100, 100, '', 'd1', {}, POLE_LAYOUT).plan
     const after = setPointSize(p, 'd1', 60, 60, POLE_LAYOUT)
     expect(pointSize(after.els[0])).toEqual({ w: 7.5, h: 7.5 })
+  })
+})
+
+describe('electrical distribution layout (360S014EB)', () => {
+  it('uses the measured box and the printed north circle', () => {
+    expect(EB_LAYOUT.box).toEqual({ x: 42.5, y: 426, w: 522.5, h: 238 })
+    expect(EB_LAYOUT.north).toEqual({ cx: 33.75, cy: 33, r: 22.75 })
+  })
+
+  it('is registered for the form', () => {
+    expect(layoutFor('360S014EB')).toBe(EB_LAYOUT)
+  })
+
+  it('keeps the north setting, because the form prints a north circle', () => {
+    const p = normalizePlan({ north: 40, northSet: true, els: [] }, EB_LAYOUT)
+    expect([p.north, p.northSet]).toEqual([40, true])
+  })
+
+  it('a tap in the printed north circle is a north hit', () => {
+    expect(hitTest(emptyPlan(), 33.75, 33, { tol: 10, layout: EB_LAYOUT })).toEqual({ type: 'north' })
+  })
+
+  it('the north arrow stays inside the printed circle', () => {
+    const g = northGeometry(40, EB_LAYOUT)
+    const r = EB_LAYOUT.north.r
+    for (const q of [g.head, g.tail, ...g.wings]) {
+      expect(Math.hypot(q.x - 33.75, q.y - 33) <= r + 0.01).toBe(true)
+    }
+  })
+
+  it('the sample plan fits the box, keeps its points, and avoids the printed circle', () => {
+    const p = normalizePlan(EB_SAMPLE_PLAN, EB_LAYOUT)
+    expect(p.els.length).toBe(EB_SAMPLE_PLAN.els.length)
+    EB_SAMPLE_PLAN.els.forEach((raw, i) => {
+      const after = pointsOf(p.els[i])
+      expect(after).toEqual(pointsOf(raw))
+      for (const [x, y] of after) {
+        expect(x >= 0 && x <= 522.5).toBe(true)
+        expect(y >= 0 && y <= 238).toBe(true)
+        expect(Math.hypot(x - 33.75, y - 33) > 22.75).toBe(true)
+      }
+    })
   })
 })

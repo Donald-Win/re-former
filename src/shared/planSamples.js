@@ -20,3 +20,21 @@ export const POLE_SAMPLE_PLAN = {
     { id: 'd2', t: 'dim', color: 'green', orient: 'aligned',    x1: 330, y1: 180, x2: 430, y2: 120, offset: -10, label: '12.4m' },
   ],
 }
+
+// 360S014EB Electrical Distribution Record — box is 522.5 × 238 pt. The printed
+// north circle sits in the top-left corner (about x 11–56, y 10–56 pt in the box),
+// so no sample item is placed there.
+export const EB_SAMPLE_PLAN = {
+  v: 1, north: 40, northSet: true,
+  els: [
+    { id: 's1', t: 'pt', kind: 'circle', x: 220, y: 120, w: 14, color: 'blue', labelPos: 'top', label: 'Pole 4521' },
+    { id: 's2', t: 'pt', kind: 'rect', x: 330, y: 140, w: 40, h: 26, color: 'black', labelPos: 'bottom', label: 'Pit' },
+    { id: 's3', t: 'pt', kind: 'dot', x: 400, y: 140, color: 'red', labelPos: 'right', label: 'Joint' },
+    { id: 's4', t: 'pt', kind: 'text', x: 440, y: 70, color: 'blue', label: 'Footpath' },
+    { id: 'l1', t: 'ln', pattern: 'solid', color: 'black', weight: 'normal', x1: 220, y1: 120, x2: 330, y2: 140, label: 'UG cable' },
+    { id: 'l2', t: 'ln', pattern: 'dashed', color: 'blue', weight: 'thick', x1: 330, y1: 140, x2: 470, y2: 140, label: 'Duct' },
+    { id: 'l3', t: 'ln', pattern: 'dashdot', color: 'green', weight: 'heavy', x1: 40, y1: 215, x2: 500, y2: 215, label: 'Boundary' },
+    { id: 'd1', t: 'dim', color: 'black', orient: 'horizontal', x1: 220, y1: 120, x2: 330, y2: 120, offset: 16, label: '11.0m' },
+    { id: 'd2', t: 'dim', color: 'black', orient: 'vertical', x1: 330, y1: 140, x2: 330, y2: 215, offset: 18, label: '7.5m' },
+  ],
+}

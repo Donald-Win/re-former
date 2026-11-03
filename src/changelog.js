@@ -13,6 +13,15 @@
 
 export const CHANGELOGS = [
   {
+    version: '2.29.0',
+    changes: [
+      {
+        heading: 'Electrical Distribution Record — Dimensioned Plan',
+        detail: "The Electrical Distribution Record has a new Dimensioned Plan step, before Comments. Draw the cable route in the plan box: the cables, ducts, boundaries, pits and poles, with dimensions and labels. Set the north arrow inside the printed circle, as on the Earth Test form. The drawing prints into the plan box on the form. Plans can be saved as templates for next time.",
+      },
+    ],
+  },
+  {
     version: '2.28.1',
     changes: [
       {
