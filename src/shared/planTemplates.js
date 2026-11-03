@@ -28,14 +28,19 @@ export function makeTemplateId() {
   return 'tpl_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)
 }
 
-/** The saved record for a plan — the plan is normalised so only valid data is stored. */
+/** A plan with its north arrow cleared, so north must be set for each drawing. */
+export function withoutNorth(plan) {
+  return { ...normalizePlan(plan), north: 0, northSet: false }
+}
+
+/** The saved record for a plan — north is never stored. */
 export function makeTemplate({ id, formKey, name, plan, now = new Date() }) {
   return {
     id: id || makeTemplateId(),
     formKey,
     name: cleanTemplateName(name),
     savedAt: now.toISOString(),
-    plan: normalizePlan(plan),
+    plan: withoutNorth(plan),
   }
 }
 
@@ -62,7 +67,7 @@ export function cleanImported(raw) {
     formKey: raw.formKey,
     name,
     savedAt: typeof raw.savedAt === 'string' ? raw.savedAt : new Date(0).toISOString(),
-    plan: normalizePlan(raw.plan),
+    plan: withoutNorth(raw.plan),
   }
 }
 

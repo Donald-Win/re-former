@@ -23,9 +23,8 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { Trash2, X, Check, FolderOpen } from 'lucide-react'
 import { listTemplates, saveTemplate, deleteTemplate } from './planTemplateStore'
 import {
-  cleanTemplateName, findByName, planSummary, isSavablePlan, NAME_MAX,
+  cleanTemplateName, findByName, planSummary, isSavablePlan, NAME_MAX, withoutNorth,
 } from './planTemplates'
-import { normalizePlan } from './planModel'
 import { APP_ACCENT } from './constants'
 import { wInp, wLbl } from './WizardInputs'
 
@@ -85,7 +84,7 @@ export function PlanTemplatePicker({ open, onClose, formKey, plan, onLoad, rende
   const handleLoad = (t) => {
     const hasPlan = isSavablePlan(plan)
     if (hasPlan && !window.confirm(`Replace the current plan with "${t.name}"?`)) return
-    onLoad(normalizePlan(t.plan))
+    onLoad(withoutNorth(t.plan))
     onClose()
   }
 
@@ -191,7 +190,7 @@ export function PlanTemplatePicker({ open, onClose, formKey, plan, onLoad, rende
                     textAlign: 'left', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 12, minWidth: 0,
                   }}>
                     <div style={{ width: 110, flexShrink: 0, border: '1px solid #e5e7eb', borderRadius: 6, overflow: 'hidden', pointerEvents: 'none' }}>
-                      {renderThumb ? renderThumb(normalizePlan(t.plan)) : null}
+                      {renderThumb ? renderThumb(withoutNorth(t.plan)) : null}
                     </div>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontWeight: 700, fontSize: 14, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.name}</div>
