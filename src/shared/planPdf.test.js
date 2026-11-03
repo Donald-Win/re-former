@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { drawPlan } from './planPdf'
-import { EARTH_LAYOUT, POLE_LAYOUT, EB_LAYOUT } from './planLayouts'
+import { EARTH_LAYOUT, POLE_LAYOUT, EB_LAYOUT, LV_CONNECTION_LAYOUT } from './planLayouts'
 import { emptyPlan, addPoint } from './planModel'
-import { POLE_SAMPLE_PLAN, EB_SAMPLE_PLAN } from './planSamples'
+import { POLE_SAMPLE_PLAN, EB_SAMPLE_PLAN, LV_SAMPLE_PLAN } from './planSamples'
 
 // Stand-in font: width only, which is all drawPlan asks for.
 const font = { widthOfTextAtSize: s => s.length * 4 }
@@ -71,6 +71,22 @@ describe('drawPlan geometry', () => {
     }
     expect(Math.min(...xs) >= 42.5 - 0.01).toBe(true)
     expect(Math.max(...xs) <= 565.0 + 0.01).toBe(true)
+    expect(Math.min(...ys) >= bottom - 0.01).toBe(true)
+    expect(Math.max(...ys) <= top + 0.01).toBe(true)
+  })
+
+  it('the LV connection sample stays inside its box in PDF space', () => {
+    const page = fakePage()
+    drawPlan({ page, font, plan: LV_SAMPLE_PLAN, layout: LV_CONNECTION_LAYOUT, pageHeight: 842 })
+    const top = 842 - 455.5, bottom = 842 - 722.0
+    const xs = [], ys = []
+    for (const c of page.calls) {
+      if (c.name === 'text') continue
+      if (c.name === 'circle' || c.name === 'rect') { xs.push(c.args.x); ys.push(c.args.y) }
+      if (c.name === 'line') { xs.push(c.args.start.x, c.args.end.x); ys.push(c.args.start.y, c.args.end.y) }
+    }
+    expect(Math.min(...xs) >= 42.5 - 0.01).toBe(true)
+    expect(Math.max(...xs) <= 553.0 + 0.01).toBe(true)
     expect(Math.min(...ys) >= bottom - 0.01).toBe(true)
     expect(Math.max(...ys) <= top + 0.01).toBe(true)
   })

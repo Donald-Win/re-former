@@ -28,6 +28,8 @@ import { PDFDocument } from 'pdf-lib'
 import { embedAppFont, fetchPdfTemplate, createPageDrawer, DEFAULT_INK, A4_HEIGHT } from '../../shared/pdfDrawUtils'
 import { renderFields } from '../../shared/pdfFieldRenderer'
 import { appendPhotosToPdf } from '../../shared/appendPhotosToPdf'
+import { drawPlan } from '../../shared/planPdf'
+import { LV_CONNECTION_LAYOUT } from '../../shared/planLayouts'
 
 const getTemplateUrl = () =>
   `${import.meta.env.BASE_URL}forms/360S014EA.pdf`
@@ -97,8 +99,12 @@ export async function generateEaPdf(d, photos = []) {
 
   await renderFields({ pdfDoc, page: p1, draw }, FIELDS, d)
 
+  // ── Dimensioned plan — page 1, in the "WORK PLAN AND DESCRIPTION" box ──
+  drawPlan({ page: p1, draw, font, plan: d.plan, layout: LV_CONNECTION_LAYOUT, pageHeight: A4_HEIGHT })
+
   if (photos && photos.length > 0) await appendPhotosToPdf(pdfDoc, photos)
 
   return new Uint8Array(await pdfDoc.save())
 }
+
 

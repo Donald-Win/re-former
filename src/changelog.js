@@ -13,6 +13,15 @@
 
 export const CHANGELOGS = [
   {
+    version: '2.30.0',
+    changes: [
+      {
+        heading: 'LV Connection Record — Dimensioned Plan',
+        detail: "The LV Connection Record has a new Dimensioned Plan step, before Work Description. Draw the conductor route in the plan box: the pole, box, cables, ducts and dimensions. Mark an LV open point and label which side the connection was made to. Set the north arrow inside the printed circle. The drawing prints into the work plan box on the form, and plans can be saved as templates.",
+      },
+    ],
+  },
+  {
     version: '2.29.0',
     changes: [
       {

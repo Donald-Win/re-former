@@ -38,3 +38,20 @@ export const EB_SAMPLE_PLAN = {
     { id: 'd2', t: 'dim', color: 'black', orient: 'vertical', x1: 330, y1: 140, x2: 330, y2: 215, offset: 18, label: '7.5m' },
   ],
 }
+
+// 360S014EA LV Connection Record — box is 510.5 × 266.5 pt. The printed north circle
+// sits in the top-left corner (about x 9–63, y 10–64 pt in the box), so no sample
+// item is placed there.
+export const LV_SAMPLE_PLAN = {
+  v: 1, north: 40, northSet: true,
+  els: [
+    { id: 's1', t: 'pt', kind: 'circle', x: 200, y: 120, w: 14, color: 'blue', labelPos: 'top', label: 'Pole 1234' },
+    { id: 's2', t: 'pt', kind: 'rect', x: 300, y: 150, w: 40, h: 24, color: 'black', labelPos: 'bottom', label: 'LV box' },
+    { id: 's3', t: 'pt', kind: 'dot', x: 240, y: 190, color: 'red', labelPos: 'right', label: 'LV open point (connected this side)' },
+    { id: 's4', t: 'pt', kind: 'text', x: 430, y: 60, color: 'blue', label: 'Footpath' },
+    { id: 'l1', t: 'ln', pattern: 'solid', color: 'black', weight: 'normal', x1: 200, y1: 120, x2: 300, y2: 150, label: 'Service' },
+    { id: 'l2', t: 'ln', pattern: 'dashed', color: 'blue', weight: 'thick', x1: 300, y1: 150, x2: 430, y2: 150, label: 'Duct' },
+    { id: 'd1', t: 'dim', color: 'black', orient: 'horizontal', x1: 200, y1: 120, x2: 300, y2: 120, offset: 16, label: '12.0m' },
+    { id: 'd2', t: 'dim', color: 'black', orient: 'vertical', x1: 300, y1: 150, x2: 300, y2: 240, offset: 18, label: '9.0m' },
+  ],
+}

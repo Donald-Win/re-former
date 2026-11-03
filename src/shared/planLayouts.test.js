@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { EARTH_LAYOUT, POLE_LAYOUT, EB_LAYOUT, layoutFor } from './planLayouts'
+import { EARTH_LAYOUT, POLE_LAYOUT, EB_LAYOUT, LV_CONNECTION_LAYOUT, layoutFor } from './planLayouts'
 import { emptyPlan, normalizePlan, addPoint, snapPoint, hitTest, setPointSize, pointSize, sizeLimits } from './planModel'
 import { makeTemplate, cleanImported } from './planTemplates'
-import { POLE_SAMPLE_PLAN, EB_SAMPLE_PLAN } from './planSamples'
+import { POLE_SAMPLE_PLAN, EB_SAMPLE_PLAN, LV_SAMPLE_PLAN } from './planSamples'
 import { northGeometry } from './planModel'
 
 const pointsOf = e => {
@@ -165,6 +165,47 @@ describe('electrical distribution layout (360S014EB)', () => {
         expect(x >= 0 && x <= 522.5).toBe(true)
         expect(y >= 0 && y <= 238).toBe(true)
         expect(Math.hypot(x - 33.75, y - 33) > 22.75).toBe(true)
+      }
+    })
+  })
+})
+
+describe('LV connection layout (360S014EA)', () => {
+  it('uses the measured box and the printed north circle', () => {
+    expect(LV_CONNECTION_LAYOUT.box).toEqual({ x: 42.5, y: 455.5, w: 510.5, h: 266.5 })
+    expect(LV_CONNECTION_LAYOUT.north).toEqual({ cx: 36, cy: 37, r: 27 })
+  })
+
+  it('is registered for the form', () => {
+    expect(layoutFor('360S014EA')).toBe(LV_CONNECTION_LAYOUT)
+  })
+
+  it('keeps the north setting', () => {
+    const p = normalizePlan({ north: 40, northSet: true, els: [] }, LV_CONNECTION_LAYOUT)
+    expect([p.north, p.northSet]).toEqual([40, true])
+  })
+
+  it('a tap in the printed north circle is a north hit', () => {
+    expect(hitTest(emptyPlan(), 36, 37, { tol: 10, layout: LV_CONNECTION_LAYOUT })).toEqual({ type: 'north' })
+  })
+
+  it('the north arrow stays inside the printed circle', () => {
+    const g = northGeometry(40, LV_CONNECTION_LAYOUT)
+    for (const q of [g.head, g.tail, ...g.wings]) {
+      expect(Math.hypot(q.x - 36, q.y - 37) <= 27 + 0.01).toBe(true)
+    }
+  })
+
+  it('the sample plan fits the box, keeps its points, and avoids the printed circle', () => {
+    const p = normalizePlan(LV_SAMPLE_PLAN, LV_CONNECTION_LAYOUT)
+    expect(p.els.length).toBe(LV_SAMPLE_PLAN.els.length)
+    LV_SAMPLE_PLAN.els.forEach((raw, i) => {
+      const after = pointsOf(p.els[i])
+      expect(after).toEqual(pointsOf(raw))
+      for (const [x, y] of after) {
+        expect(x >= 0 && x <= 510.5).toBe(true)
+        expect(y >= 0 && y <= 266.5).toBe(true)
+        expect(Math.hypot(x - 36, y - 37) > 27).toBe(true)
       }
     })
   })

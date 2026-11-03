@@ -38,10 +38,21 @@ export const EB_LAYOUT = Object.freeze({
   north: Object.freeze({ cx: 33.75, cy: 33, r: 22.75 }),
 })
 
+// 360S014EA — LV Connection Record, page 1 "WORK PLAN AND DESCRIPTION" box.
+// Measured from a 144 dpi raster (1 px = 0.5 pt): plain white box, no printed grid,
+// bounded by solid rules at x 42.5–553.0 pt and y 455.5–722.0 pt. The printed north
+// circle is centred at (78.5, 492.5) pt with radius 27.0 pt, i.e. (36.0, 37.0)
+// relative to the box.
+export const LV_CONNECTION_LAYOUT = Object.freeze({
+  box: Object.freeze({ x: 42.5, y: 455.5, w: 510.5, h: 266.5 }),
+  north: Object.freeze({ cx: 36, cy: 37, r: 27 }),
+})
+
 const BY_FORM = {
   '360S014EJ': EARTH_LAYOUT,
   '360S014EC': POLE_LAYOUT,
   '360S014EB': EB_LAYOUT,
+  '360S014EA': LV_CONNECTION_LAYOUT,
 }
 
 /** The layout for a form code. Unknown codes get the Earth layout. */

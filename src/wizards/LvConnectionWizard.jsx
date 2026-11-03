@@ -5,6 +5,9 @@ import { Zap } from 'lucide-react'
 import { WizardShell } from '../shared/WizardShell'
 import { WF, WTA, WCB, SectionHead } from '../shared/WizardInputs'
 import { PhotoAttachStep } from '../shared/PhotoAttachStep'
+import { PlanSketchStep } from '../shared/PlanSketchStep'
+import { emptyPlan } from '../shared/planModel'
+import { LV_SAMPLE_PLAN } from '../shared/planSamples'
 import { sharePdf, buildPdfFilename } from '../shared/sharePdf'
 import { getBaseFormState } from '../shared/userPrefs'
 import { JobDetailsStep } from '../shared/JobDetailsStep'
@@ -28,6 +31,7 @@ const LV_STEPS = [
   'Job Details',
   'Connection Point',
   'Conductor Details',
+  'Dimensioned Plan',
   'Work Description',
   'Photos',
   'Preview & Print',
@@ -55,6 +59,7 @@ export default function LvConnectionWizard({ onClose }) {
     cableDuctNewSize:      '',
     cableDuctExistingSize: '',
     workDescription:       '',
+    plan: emptyPlan(),
   }))
   const [photos, setPhotos] = useState([])
 
@@ -86,7 +91,7 @@ export default function LvConnectionWizard({ onClose }) {
     !d.signed           && 'Signature',
   ].filter(Boolean)
 
-  const { set, handleDevFill } = useWizardSetup(d, setD, step, '360S014EA')
+  const { set, handleDevFill } = useWizardSetup(d, setD, step, '360S014EA', { plan: LV_SAMPLE_PLAN })
   const { clearDraft: clearFormDraft } = useDraft('360S014EA', d, step, photos)
   const crashRecovery = useCrashRecovery({ formKey: '360S014EA', setD, setStep, setPhotos, maxStep: LV_STEPS.length - 2 })
 
@@ -152,25 +157,29 @@ export default function LvConnectionWizard({ onClose }) {
       )
 
       case 3: return (
+        // 3 — Dimensioned Plan
         <div key="s3">
-          <SectionHead label="Work Plan & Description" accent={LV_TEAL} />
-          <div style={{
-            background: '#f0fdfa', border: `1px solid ${LV_BORDER}`, borderRadius: 8,
-            padding: '10px 14px', marginBottom: 14, fontSize: 13, color: '#0f766e', lineHeight: 1.5,
-          }}>
-            <strong>📐 Location plan:</strong> The dimensioned conductor plan must be drawn manually on the printed form.
-          </div>
-          <WTA label="Describe the Work Performed" v={d.workDescription} set={v => set('workDescription', v)} accent={LV_TEAL} rows={6} />
+          <SectionHead label="Dimensioned Plan" sub="Include the north arrow in the circle. Show any change in direction and duct ends, and label which side any LV open point connection is made to." accent={LV_TEAL} />
+          <PlanSketchStep plan={d.plan} onChange={p => set('plan', p)} formKey="360S014EA" accent={LV_TEAL} />
         </div>
       )
 
       case 4: return (
+        // 4 — Work Description
         <div key="s4">
+          <SectionHead label="Work Description" accent={LV_TEAL} />
+          <WTA label="Describe the Work Performed" v={d.workDescription} set={v => set('workDescription', v)} accent={LV_TEAL} rows={6} />
+        </div>
+      )
+
+      case 5: return (
+        // 5 — Photos
+        <div key="s5">
           <PhotoAttachStep photos={photos} onChange={setPhotos} accent={LV_TEAL} />
         </div>
       )
 
-      case 5: return null
+      case 6: return null
 
       default: return null
     }
@@ -213,3 +222,4 @@ export default function LvConnectionWizard({ onClose }) {
     </>
   )
 }
+
