@@ -6,17 +6,16 @@
  *   return <AuthGate> ... rest of app JSX ... </AuthGate>
  */
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import {
   getDeviceId,
   getCachedResult,
   checkAccessOnline,
   setRevokedCallback,
-  startPolling,
-  stopPolling,
   addVisibilityListener,
   addOnlineListener,
 } from './auth'
+import { isCacheExpired, MAX_OFFLINE_MS } from './authPolicy'
 
 // ── LOCK SCREEN ───────────────────────────────────────────────────────────────
 
@@ -120,6 +119,58 @@ function LockScreen({ deviceId }) {
   )
 }
 
+// ── VERIFY SCREEN ─────────────────────────────────────────────────────────────
+// Shown when a device that WAS allowed hasn't been able to confirm that for
+// longer than MAX_OFFLINE_MS. Not a block — one successful connection clears it.
+
+function VerifyScreen({ onCheck, checking }) {
+  const days = Math.round(MAX_OFFLINE_MS / 86_400_000)
+  return (
+    <div style={{
+      minHeight: '100dvh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '1.5rem',
+      background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      boxSizing: 'border-box',
+    }}>
+      <div style={{
+        background: 'white',
+        borderRadius: 24,
+        padding: '2.5rem 2rem',
+        maxWidth: 420,
+        width: '100%',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.35)',
+        textAlign: 'center',
+      }}>
+        <div style={{ fontSize: '3.5rem', marginBottom: '1rem' }}>📶</div>
+        <h1 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#111827', margin: '0 0 0.75rem' }}>
+          Connect to Verify
+        </h1>
+        <p style={{ color: '#6b7280', lineHeight: 1.6, margin: '0 0 1.75rem', fontSize: '0.95rem' }}>
+          This device hasn't been able to check in for over {days} days.
+          Connect to the internet once and re&#8209;former will carry on as normal.
+          Your saved details and drafts are safe.
+        </p>
+        <button
+          onClick={onCheck}
+          disabled={checking}
+          style={{
+            width: '100%', background: checking ? '#a5b4fc' : '#4f46e5', color: 'white',
+            border: 'none', borderRadius: 12,
+            padding: '0.875rem 1rem', fontWeight: 700, fontSize: '0.95rem',
+            cursor: checking ? 'default' : 'pointer', boxSizing: 'border-box',
+          }}
+        >
+          {checking ? 'Checking…' : 'Check Now'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ── LOADING SCREEN ────────────────────────────────────────────────────────────
 
 function LoadingScreen() {
@@ -141,14 +192,30 @@ function LoadingScreen() {
 // ── AUTH GATE ─────────────────────────────────────────────────────────────────
 
 export function AuthGate({ children }) {
-  const [status, setStatus]     = useState('loading')
-  const [deviceId, setDeviceId] = useState('')
+  const [status, setStatus]       = useState('loading') // loading | allowed | denied | verify
+  const [deviceId, setDeviceId]   = useState('')
+  const [verifying, setVerifying] = useState(false)
+
+  // Live check behind the "Connect to Verify" screen (button + auto-retry
+  // when the network returns).
+  const verifyNow = useCallback(async () => {
+    setVerifying(true)
+    try {
+      const result = await checkAccessOnline()
+      setStatus(result.allowed ? 'allowed' : 'denied')
+    } catch {
+      setStatus('verify') // still can't reach the service
+    } finally {
+      setVerifying(false)
+    }
+  }, [])
 
   useEffect(() => {
     const id = getDeviceId()
     setDeviceId(id)
 
-    // Called by polling and event listeners when access is revoked mid-session
+    // Called by the re-check triggers (resume, online, form open) when
+    // access is revoked mid-session
     setRevokedCallback((revokedId) => {
       console.warn('[re-former auth] Access revoked — showing lock screen')
       setDeviceId(revokedId)
@@ -158,54 +225,56 @@ export function AuthGate({ children }) {
     addVisibilityListener()
     addOnlineListener()
 
-    const cached = getCachedResult()
+    const cached  = getCachedResult()
+    const expired = isCacheExpired(cached) // "allowed" but not verified for > MAX_OFFLINE_MS
 
     if (navigator.onLine) {
-      // Show cached result immediately while live check runs.
-      // This avoids a loading flash on repeat visits.
-      // Both allowed and denied are shown from cache immediately —
-      // the live check below always runs and will correct any stale result.
-      if (cached !== null) {
+      // Show the cached result immediately while the live check runs, to
+      // avoid a loading flash on repeat visits. An EXPIRED allow is not
+      // shown — the screen stays on "Checking access…" until the live check
+      // answers. The live check below always runs and overrides the cache.
+      if (cached !== null && !expired) {
         setStatus(cached.allowed ? 'allowed' : 'denied')
-        if (cached.allowed) startPolling()
       }
 
-      // Live check — always runs, result always overrides cache
       checkAccessOnline()
-        .then(result => {
-          setStatus(result.allowed ? 'allowed' : 'denied')
-          if (result.allowed) {
-            startPolling()
-          } else {
-            stopPolling()
-          }
-        })
+        .then(result => setStatus(result.allowed ? 'allowed' : 'denied'))
         .catch(() => {
-          // Network error — keep whatever the cache said, or fail open if no cache
           if (cached === null) {
+            // No cache and the check failed — fail open
             console.warn('[re-former auth] No cache and network failed — failing open')
             setStatus('allowed')
+          } else if (expired) {
+            // Couldn't re-verify and the last verification is too old
+            setStatus('verify')
           }
-          // If cache was already shown, leave it as-is (correct offline behaviour)
+          // Otherwise the cache was already shown — leave it as-is
         })
 
     } else {
       // Offline — use cache only
       if (cached !== null) {
-        console.log('[re-former auth] Offline — using cached result:', cached.allowed ? 'allowed' : 'denied')
-        setStatus(cached.allowed ? 'allowed' : 'denied')
+        console.log('[re-former auth] Offline — using cached result:', cached.allowed ? 'allowed' : 'denied', expired ? '(expired)' : '')
+        setStatus(expired ? 'verify' : cached.allowed ? 'allowed' : 'denied')
       } else {
         // No cache, no network (fresh install offline) — fail open
         console.warn('[re-former auth] Offline with no cache — failing open')
         setStatus('allowed')
       }
-      // addOnlineListener() will re-check as soon as connectivity returns
+      // The online listener re-checks as soon as connectivity returns
     }
-
-    return () => { stopPolling() }
   }, [])
+
+  // While on the "Connect to Verify" screen, retry automatically the moment
+  // the network comes back.
+  useEffect(() => {
+    if (status !== 'verify') return
+    window.addEventListener('online', verifyNow)
+    return () => window.removeEventListener('online', verifyNow)
+  }, [status, verifyNow])
 
   if (status === 'loading') return <LoadingScreen />
   if (status === 'denied')  return <LockScreen deviceId={deviceId} />
+  if (status === 'verify')  return <VerifyScreen onCheck={verifyNow} checking={verifying} />
   return children
 }
