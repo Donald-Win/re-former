@@ -17,7 +17,7 @@ import { EARTH_LAYOUT } from './planLayouts'
 import {
   LABEL_SIZE, INK_RGB,
   lineWidth, lineDash, colorOf, labelRgb, pointKind, pointSize, labelLayout,
-  dimGeometry, northGeometry, normalizePlan,
+  dimGeometry, northGeometry, normalizePlan, capGeometry,
 } from './planModel'
 
 export function drawPlan({ page, draw, font, plan, layout = EARTH_LAYOUT, pageHeight = A4_HEIGHT }) {
@@ -72,6 +72,23 @@ export function drawPlan({ page, draw, font, plan, layout = EARTH_LAYOUT, pageHe
     })
   }
 
+  // 1b — line ends (arrows, dots, bars): same colour and weight as the line
+  for (const e of p.els) {
+    if (e.t !== 'ln') continue
+    const c = rgb(...colorOf(e.color).rgb)
+    for (const g of capGeometry(e)) {
+      for (const s of g.lines) {
+        page.drawLine({ start: pt(s[0], s[1]), end: pt(s[2], s[3]), thickness: lineWidth(e), color: c })
+      }
+      if (g.dot) {
+        page.drawCircle({
+          x: X(g.dot.x), y: Y(g.dot.y), size: g.dot.r,
+          color: c, borderColor: c, borderWidth: 0,
+        })
+      }
+    }
+  }
+
   // 2 — dimensions (extension lines, dimension line, arrowheads)
   for (const e of p.els) {
     if (e.t !== 'dim') continue
@@ -124,4 +141,5 @@ export function drawPlan({ page, draw, font, plan, layout = EARTH_LAYOUT, pageHe
     drawLabel('N', g.label.x, g.label.y, 'middle', 0, INK_RGB, 8)
   }
 }
+
 

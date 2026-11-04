@@ -13,6 +13,15 @@
 
 export const CHANGELOGS = [
   {
+    version: '2.31.0',
+    changes: [
+      {
+        heading: 'Arrows, dots and bars on line ends',
+        detail: "Lines on the plan can now finish with an arrow, a dot or a flat bar instead of a plain end. Choose the finish in the Line tool or on a selected line, and apply it to the start, the end or both ends. It takes the line's colour and weight, and prints on the form the same way.",
+      },
+    ],
+  },
+  {
     version: '2.30.0',
     changes: [
       {

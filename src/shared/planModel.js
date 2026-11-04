@@ -133,6 +133,72 @@ const DIM_EXT_GAP  = 2      // gap between a measured point and its extension li
 const DIM_EXT_OVER = 3      // how far an extension line runs past the dimension line
 const DIM_ARROW    = 5      // arrowhead length
 
+// ── Line ends (caps) ────────────────────────────────────────────────────────
+// A line can finish with one of these at its start, its end or both.
+// 'none' is the plain finish. Caps take the line's colour and weight.
+export const CAP_TYPES = [
+  { id: 'none',  label: 'Plain' },
+  { id: 'arrow', label: 'Arrow' },
+  { id: 'dot',   label: 'Dot' },
+  { id: 'bar',   label: 'Bar' },
+]
+export const CAP_ENDS = [
+  { id: 'start', label: 'Start' },
+  { id: 'end',   label: 'End' },
+  { id: 'both',  label: 'Both' },
+]
+const CAP_TYPE_IDS = new Set(CAP_TYPES.map(k => k.id))
+const CAP_END_IDS  = new Set(CAP_ENDS.map(k => k.id))
+const CAP_ANGLE    = (30 * Math.PI) / 180   // arrow wing angle from the line
+
+/**
+ * Drawing for one cap at (x, y). (ox, oy) is a unit vector pointing outward
+ * from the line, past that end. Returns { type, lines, dot }:
+ *   lines  — straight strokes [x1, y1, x2, y2] at the line's own width
+ *   dot    — { x, y, r } filled circle, or null
+ */
+function capAt(type, x, y, ox, oy, w) {
+  if (type === 'dot') return { type, lines: [], dot: { x, y, r: 1.5 + w * 0.9 } }
+  if (type === 'bar') {
+    const h = 3 + w * 1.2                  // half-length of the bar
+    return {
+      type,
+      lines: [[x - oy * h, y + ox * h, x + oy * h, y - ox * h]],
+      dot: null,
+    }
+  }
+  // arrow: an open V whose wings point back along the line (same style as dimension arrows)
+  const L = 4 + w * 2.5                    // wing length
+  const c = Math.cos(CAP_ANGLE), s = Math.sin(CAP_ANGLE)
+  const bx = -ox, by = -oy
+  const wing = sign => {
+    const rx = bx * c - by * sign * s
+    const ry = bx * sign * s + by * c
+    return [x, y, x + rx * L, y + ry * L]
+  }
+  return { type, lines: [wing(1), wing(-1)], dot: null }
+}
+
+/**
+ * Everything needed to draw a line's caps, in plan coordinates. Returns []
+ * for lines with no cap. Used by both the editor and the PDF printer.
+ */
+export function capGeometry(el) {
+  if (el.t !== 'ln') return []
+  const type = CAP_TYPE_IDS.has(el.cap) ? el.cap : 'none'
+  if (type === 'none') return []
+  const ends = CAP_END_IDS.has(el.capEnds) ? el.capEnds : 'end'
+  const dx = el.x2 - el.x1, dy = el.y2 - el.y1
+  const len = Math.hypot(dx, dy)
+  if (len < 0.001) return []
+  const ux = dx / len, uy = dy / len       // start → end
+  const w  = lineWidth(el)
+  const out = []
+  if (ends === 'end' || ends === 'both')   out.push(capAt(type, el.x2, el.y2,  ux,  uy, w))
+  if (ends === 'start' || ends === 'both') out.push(capAt(type, el.x1, el.y1, -ux, -uy, w))
+  return out
+}
+
 const PATTERN_IDS = new Set(LINE_PATTERNS.map(k => k.id))
 const WEIGHT_IDS  = new Set(LINE_WEIGHTS.map(k => k.id))
 const COLOR_IDS   = new Set(COLORS.map(k => k.id))
@@ -217,6 +283,8 @@ export function normalizePlan(raw, L = EARTH_LAYOUT) {
         pattern: PATTERN_IDS.has(patternRaw) ? patternRaw : 'solid',
         color:   COLOR_IDS.has(e.color) ? e.color : 'blue',
         weight:  WEIGHT_IDS.has(e.weight) ? e.weight : (e.style === 'thick' ? 'thick' : 'normal'),
+        cap:     CAP_TYPE_IDS.has(e.cap) ? e.cap : 'none',
+        capEnds: CAP_END_IDS.has(e.capEnds) ? e.capEnds : 'end',
         x1: cx_(e.x1), y1: cy_(e.y1), x2: cx_(e.x2), y2: cy_(e.y2), label,
       })
     } else if (e.t === 'dim' && isNum(e.x1) && isNum(e.y1) && isNum(e.x2) && isNum(e.y2)) {
@@ -709,4 +777,5 @@ export function northGeometry(deg, L = EARTH_LAYOUT) {
   const rad150 = (150 * Math.PI) / 180
   return { head, tail, wings: [wing(rad150), wing(-rad150)], label: at(NORTH.r + 7) }
 }
+
 

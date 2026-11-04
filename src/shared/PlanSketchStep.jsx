@@ -53,6 +53,7 @@ import { APP_ACCENT } from './constants'
 import {
   PLAN_W, PLAN_H, NORTH, LABEL_SIZE, INK,
   COLORS, LINE_PATTERNS, LINE_WEIGHTS, POINT_KINDS, DIM_ORIENTS, LABEL_POSITIONS,
+  CAP_TYPES, CAP_ENDS, capGeometry,
   colorOf, linePattern, lineWeight, lineDash, lineWidth, pointKind, labelColor,
   normalizePlan, emptyPlan, addPoint, addLine, addDim, updateEl, removeEl, setNorth,
   pointSize, setPointSize, resizeHandle, sizeFromHandle, sizeLimits, SIZE_MIN,
@@ -120,6 +121,7 @@ export function PlanSvg({
             <line x1={e.x1} y1={e.y1} x2={e.x2} y2={e.y2}
               stroke={colorOf(e.color).hex} strokeWidth={lineWidth(e)}
               strokeDasharray={dash ? dash.join(' ') : undefined} />
+            <CapGlyph el={e} color={colorOf(e.color).hex} />
           </g>
         )
       })}
@@ -302,6 +304,58 @@ function LabelPosChips({ value, onPick, accent }) {
   )
 }
 
+// Draws the caps of one line, in any colour. Used on the plan and for the
+// little samples in the chip buttons.
+function CapGlyph({ el, color = 'currentColor' }) {
+  const caps = capGeometry(el)
+  if (!caps.length) return null
+  const w = lineWidth(el)
+  return (
+    <g stroke={color} fill={color} strokeLinecap="butt">
+      {caps.map((c, i) => (
+        <g key={i}>
+          {c.lines.map((l, j) => (
+            <line key={j} x1={l[0]} y1={l[1]} x2={l[2]} y2={l[3]} strokeWidth={w} />
+          ))}
+          {c.dot && <circle cx={c.dot.x} cy={c.dot.y} r={c.dot.r} stroke="none" />}
+        </g>
+      ))}
+    </g>
+  )
+}
+
+function CapSample({ cap, weight }) {
+  const el = { t: 'ln', x1: 3, y1: 8, x2: 27, y2: 8, weight, cap, capEnds: 'end' }
+  return (
+    <svg width="30" height="16" style={{ marginRight: 6, verticalAlign: 'middle' }}>
+      <line x1={3} y1={8} x2={27} y2={8} stroke="currentColor" strokeWidth={lineWidth(el)} />
+      <CapGlyph el={el} />
+    </svg>
+  )
+}
+
+function CapChips({ value, weight, onPick, accent }) {
+  return (
+    <div style={chipRow}>
+      {CAP_TYPES.map(ct => (
+        <button key={ct.id} onClick={() => onPick(ct.id)} style={chipBtn(value === ct.id, accent)}>
+          <CapSample cap={ct.id} weight={weight} />{ct.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function CapEndChips({ value, onPick, accent }) {
+  return (
+    <div style={chipRow}>
+      {CAP_ENDS.map(o => (
+        <button key={o.id} onClick={() => onPick(o.id)} style={chipBtn((value || 'end') === o.id, accent)}>{o.label}</button>
+      ))}
+    </div>
+  )
+}
+
 function OrientChips({ value, onPick, accent }) {
   return (
     <div style={chipRow}>
@@ -349,6 +403,8 @@ function PlanEditor({ plan, onChange, onClose, accent, formKey }) {
   const [shapeColor, setShapeColor] = useState('blue')
   const [lnPattern, setLnPattern] = useState('solid')
   const [lnWeight, setLnWeight]   = useState('normal')
+  const [lnCap, setLnCap]         = useState('none')
+  const [lnCapEnds, setLnCapEnds] = useState('end')
   const [lnColor, setLnColor]     = useState('blue')
   const [dmColor, setDmColor]     = useState('black')
   const [dmOrient, setDmOrient]   = useState('aligned')
@@ -641,7 +697,7 @@ function PlanEditor({ plan, onChange, onClose, accent, formKey }) {
       if (!pending) { setPending({ x: s.x, y: s.y }); return }
       if (Math.hypot(s.x - pending.x, s.y - pending.y) < 2) { setPending(null); return }
       const r = addLine(cur, lnPattern, lnColor, lnWeight, pending.x, pending.y, s.x, s.y, '', undefined, layout)
-      commit(r.plan, cur)
+      commit(updateEl(r.plan, r.id, { cap: lnCap, capEnds: lnCapEnds }), cur)
       setSelId(r.id)
       setPending(null)
       setTool('select')
@@ -767,6 +823,8 @@ function PlanEditor({ plan, onChange, onClose, accent, formKey }) {
           <>
             <PatternChips value={lnPattern} weight={lnWeight} onPick={setLnPattern} accent={accent} />
             <WeightChips value={lnWeight} onPick={setLnWeight} accent={accent} />
+            <CapChips value={lnCap} weight={lnWeight} onPick={setLnCap} accent={accent} />
+            {lnCap !== 'none' && <CapEndChips value={lnCapEnds} onPick={setLnCapEnds} accent={accent} />}
             <ColorDots value={lnColor} onPick={setLnColor} />
           </>
         )}
@@ -800,6 +858,12 @@ function PlanEditor({ plan, onChange, onClose, accent, formKey }) {
               <div style={{ marginBottom: 10 }}>
                 <PatternChips value={sel.pattern} weight={sel.weight} onPick={v => changeProp(sel.id, { pattern: v })} accent={accent} />
                 <WeightChips value={sel.weight} onPick={v => changeProp(sel.id, { weight: v })} accent={accent} />
+                <CapChips value={sel.cap || 'none'} weight={sel.weight}
+                  onPick={v => changeProp(sel.id, { cap: v })} accent={accent} />
+                {sel.cap && sel.cap !== 'none' && (
+                  <CapEndChips value={sel.capEnds || 'end'}
+                    onPick={v => changeProp(sel.id, { capEnds: v })} accent={accent} />
+                )}
                 <ColorDots value={sel.color} onPick={c => changeProp(sel.id, { color: c })} />
               </div>
             )}
@@ -950,4 +1014,5 @@ export function PlanSketchStep({ plan: rawPlan, onChange, formKey, accent = APP_
     </div>
   )
 }
+
 
