@@ -34,6 +34,8 @@ import { PDFDocument } from 'pdf-lib'
 import { embedAppFont, fetchPdfTemplate, createPageDrawer, DEFAULT_INK, A4_HEIGHT } from '../../shared/pdfDrawUtils'
 import { renderFields, renderGridRow } from '../../shared/pdfFieldRenderer'
 import { appendPhotosToPdf } from '../../shared/appendPhotosToPdf'
+import { drawPlan } from '../../shared/planPdf'
+import { POLE_LAYOUT } from '../../shared/planLayouts'
 
 const getTemplateUrl = () =>
   `${import.meta.env.BASE_URL}forms/360S014EC.pdf`
@@ -281,10 +283,14 @@ export async function generatePolePdf(d, photos = []) {
     draw3.t(wd.x, wd.rowY[i], line)
   })
 
+  // ── Work plan — page 3, in the "WORK PLAN AND DESCRIPTION" box ──────────
+  drawPlan({ page: p3, draw: draw3, font, plan: d.plan, layout: POLE_LAYOUT, pageHeight: A4_HEIGHT })
+
   if (photos && photos.length > 0) {
     await appendPhotosToPdf(pdfDoc, photos)
   }
 
   return new Uint8Array(await pdfDoc.save())
 }
+
 

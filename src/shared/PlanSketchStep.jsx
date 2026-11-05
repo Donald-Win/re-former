@@ -47,14 +47,16 @@
  */
 import { useState, useRef, useEffect, useLayoutEffect, useMemo, useId } from 'react'
 import { WF, SectionHead } from './WizardInputs'
+import { layoutFor, EARTH_LAYOUT } from './planLayouts'
 import { PlanTemplatePicker } from './PlanTemplatePicker'
 import { APP_ACCENT } from './constants'
 import {
   PLAN_W, PLAN_H, NORTH, LABEL_SIZE, INK,
   COLORS, LINE_PATTERNS, LINE_WEIGHTS, POINT_KINDS, DIM_ORIENTS, LABEL_POSITIONS,
+  CAP_TYPES, CAP_ENDS, capGeometry,
   colorOf, linePattern, lineWeight, lineDash, lineWidth, pointKind, labelColor,
   normalizePlan, emptyPlan, addPoint, addLine, addDim, updateEl, removeEl, setNorth,
-  pointSize, setPointSize, resizeHandle, sizeFromHandle, SIZE_MIN, SIZE_MAX,
+  pointSize, setPointSize, resizeHandle, sizeFromHandle, sizeLimits, SIZE_MIN,
   dimGeometry, dimHandle, offsetFromPoint, setDimOffset,
   snapPoint, snapTargets, dragRefs, moveVertex, hitTest, labelLayout,
   angleFromNorthCentre, northGeometry,
@@ -70,20 +72,21 @@ const SHAPE_GLYPH = { rect: '▭', circle: '◯', dot: '●' }
 export function PlanSvg({
   plan, selectedId = null, pending = null, ppu = 1, editing = false,
   snapMarks = null, snapHint = null,
-  svgRef = null, style, ...rest
+  svgRef = null, style, layout = EARTH_LAYOUT, ...rest
 }) {
+  const box = layout.box
   const uid  = useId().replace(/:/g, '')
   const hr   = 7 / ppu                        // handle radius ≈ 7 screen px
   const hOff = 6 / ppu                        // resize handle sits this far outside the corner
   const hw   = 1.6 / Math.max(ppu, 0.5)       // handle outline width
-  const north = northGeometry(plan.north)
+  const north = layout.north ? northGeometry(plan.north, layout) : null
   const northOpacity = plan.northSet ? 1 : 0.35
   const sel = plan.els.find(e => e.id === selectedId) || null
 
   return (
     <svg
       ref={svgRef}
-      viewBox={`0 0 ${PLAN_W} ${PLAN_H}`}
+      viewBox={`0 0 ${box.w} ${box.h}`}
       style={{ display: 'block', width: '100%', background: '#fff', ...style }}
       {...rest}
     >
@@ -92,10 +95,11 @@ export function PlanSvg({
           <path d="M16 0H0V16" fill="none" stroke="#cfe3f5" strokeWidth="0.6" />
         </pattern>
       </defs>
-      <rect width={PLAN_W} height={PLAN_H} fill={`url(#g${uid})`} />
+      <rect width={box.w} height={box.h} fill={`url(#g${uid})`} />
 
-      {/* printed north circle + arrow */}
-      <circle cx={NORTH.cx} cy={NORTH.cy} r={NORTH.r} fill="#fff" stroke="#111" strokeWidth="1.2" />
+      {/* printed north circle + arrow (only on forms that print one) */}
+      {north && layout.north && (<g>
+      <circle cx={layout.north.cx} cy={layout.north.cy} r={layout.north.r} fill="#fff" stroke="#111" strokeWidth="1.2" />
       <g opacity={northOpacity} stroke={INK} strokeWidth="1.4" strokeLinecap="round">
         <line x1={north.tail.x} y1={north.tail.y} x2={north.head.x} y2={north.head.y} />
         <line x1={north.head.x} y1={north.head.y} x2={north.wings[0].x} y2={north.wings[0].y} />
@@ -103,6 +107,7 @@ export function PlanSvg({
         <text x={north.label.x} y={north.label.y} dy=".35em" textAnchor="middle"
           fontSize="8" fill={INK} stroke="none" fontFamily={FONT}>N</text>
       </g>
+      </g>)}
 
       {/* lines */}
       {plan.els.filter(e => e.t === 'ln').map(e => {
@@ -116,6 +121,7 @@ export function PlanSvg({
             <line x1={e.x1} y1={e.y1} x2={e.x2} y2={e.y2}
               stroke={colorOf(e.color).hex} strokeWidth={lineWidth(e)}
               strokeDasharray={dash ? dash.join(' ') : undefined} />
+            <CapGlyph el={e} color={colorOf(e.color).hex} />
           </g>
         )
       })}
@@ -298,6 +304,58 @@ function LabelPosChips({ value, onPick, accent }) {
   )
 }
 
+// Draws the caps of one line, in any colour. Used on the plan and for the
+// little samples in the chip buttons.
+function CapGlyph({ el, color = 'currentColor' }) {
+  const caps = capGeometry(el)
+  if (!caps.length) return null
+  const w = lineWidth(el)
+  return (
+    <g stroke={color} fill={color} strokeLinecap="butt">
+      {caps.map((c, i) => (
+        <g key={i}>
+          {c.lines.map((l, j) => (
+            <line key={j} x1={l[0]} y1={l[1]} x2={l[2]} y2={l[3]} strokeWidth={w} />
+          ))}
+          {c.dot && <circle cx={c.dot.x} cy={c.dot.y} r={c.dot.r} stroke="none" />}
+        </g>
+      ))}
+    </g>
+  )
+}
+
+function CapSample({ cap, weight }) {
+  const el = { t: 'ln', x1: 3, y1: 8, x2: 27, y2: 8, weight, cap, capEnds: 'end' }
+  return (
+    <svg width="30" height="16" style={{ marginRight: 6, verticalAlign: 'middle' }}>
+      <line x1={3} y1={8} x2={27} y2={8} stroke="currentColor" strokeWidth={lineWidth(el)} />
+      <CapGlyph el={el} />
+    </svg>
+  )
+}
+
+function CapChips({ value, weight, onPick, accent }) {
+  return (
+    <div style={chipRow}>
+      {CAP_TYPES.map(ct => (
+        <button key={ct.id} onClick={() => onPick(ct.id)} style={chipBtn(value === ct.id, accent)}>
+          <CapSample cap={ct.id} weight={weight} />{ct.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function CapEndChips({ value, onPick, accent }) {
+  return (
+    <div style={chipRow}>
+      {CAP_ENDS.map(o => (
+        <button key={o.id} onClick={() => onPick(o.id)} style={chipBtn((value || 'end') === o.id, accent)}>{o.label}</button>
+      ))}
+    </div>
+  )
+}
+
 function OrientChips({ value, onPick, accent }) {
   return (
     <div style={chipRow}>
@@ -324,7 +382,7 @@ function ColorDots({ value, onPick }) {
 }
 
 // − value + control. `min`/`max` bound it; step is 2 units.
-function Stepper({ label, value, onChange, accent, min = SIZE_MIN, max = SIZE_MAX }) {
+function Stepper({ label, value, onChange, accent, min = SIZE_MIN, max }) {
   const bump = d => onChange(Math.min(max, Math.max(min, Math.round(value + d))))
   const sb = { ...btn(false, accent), padding: '6px 14px', fontSize: 16, lineHeight: 1 }
   return (
@@ -339,11 +397,14 @@ function Stepper({ label, value, onChange, accent, min = SIZE_MIN, max = SIZE_MA
 
 // ── The full-screen editor ───────────────────────────────────────────────────
 function PlanEditor({ plan, onChange, onClose, accent, formKey }) {
+  const layout = layoutFor(formKey)
   const [tool, setTool]       = useState('select')       // select | shape | line | dim | text
   const [shapeKind, setShapeKind] = useState('rect')
   const [shapeColor, setShapeColor] = useState('blue')
   const [lnPattern, setLnPattern] = useState('solid')
   const [lnWeight, setLnWeight]   = useState('normal')
+  const [lnCap, setLnCap]         = useState('none')
+  const [lnCapEnds, setLnCapEnds] = useState('end')
   const [lnColor, setLnColor]     = useState('blue')
   const [dmColor, setDmColor]     = useState('black')
   const [dmOrient, setDmOrient]   = useState('aligned')
@@ -363,7 +424,7 @@ function PlanEditor({ plan, onChange, onClose, accent, formKey }) {
   const gest     = useRef(null)
   const labelHistId = useRef(null)
 
-  const ppu  = (cw * zoom) / PLAN_W                      // screen px per plan unit
+  const ppu  = (cw * zoom) / layout.box.w                      // screen px per plan unit
   const step = snapStepForZoom(zoom)                     // grid snap gets finer as you zoom
   const sel  = plan.els.find(e => e.id === selId) || null
   // Corners / midpoints are shown while placing, so you can see what you can snap to.
@@ -415,7 +476,7 @@ function PlanEditor({ plan, onChange, onClose, accent, formKey }) {
 
   const clientToPlan = (cx, cy) => {
     const r = svgRef.current.getBoundingClientRect()
-    return { x: ((cx - r.left) / r.width) * PLAN_W, y: ((cy - r.top) / r.height) * PLAN_H }
+    return { x: ((cx - r.left) / r.width) * layout.box.w, y: ((cy - r.top) / r.height) * layout.box.h }
   }
   const toPlan = (e) => clientToPlan(e.clientX, e.clientY)
 
@@ -424,7 +485,7 @@ function PlanEditor({ plan, onChange, onClose, accent, formKey }) {
     const cr = el.getBoundingClientRect()
     const z  = clampZoom(zNew)
     const pos = scrollForAnchor({
-      px: planPt.x, py: planPt.y, zoom: z,
+      px: planPt.x, py: planPt.y, zoom: z, layout,
       contentW: el.clientWidth - 2 * PAD, pad: PAD,
       clientX: client.x, clientY: client.y, viewLeft: cr.left, viewTop: cr.top,
     })
@@ -522,7 +583,7 @@ function PlanEditor({ plan, onChange, onClose, accent, formKey }) {
     e.currentTarget.setPointerCapture?.(e.pointerId)
     const cur = planRef.current
     const p   = toPlan(e)
-    const hit = hitTest(cur, p.x, p.y, { tol: 16 / ppu, selectedId: selId, handleOff: 6 / ppu })
+    const hit = hitTest(cur, p.x, p.y, { tol: 16 / ppu, selectedId: selId, handleOff: 6 / ppu, layout })
     const g = {
       id: e.pointerId, sx: e.clientX, sy: e.clientY, moved: false, pushed: false,
       hit, base: cur, kind: 'pan',
@@ -565,7 +626,7 @@ function PlanEditor({ plan, onChange, onClose, accent, formKey }) {
       const el = g.base.els.find(x => x.id === g.hit.id)
       const sz = sizeFromHandle(el, p.x, p.y, 6 / ppu)
       if (!g.pushed) { pushHistory(g.base); g.pushed = true }
-      onChange(setPointSize(g.base, el.id, sz.w, sz.h))
+      onChange(setPointSize(g.base, el.id, sz.w, sz.h, layout))
     } else if (g.kind === 'offset') {
       const p  = toPlan(e)
       const el = g.base.els.find(x => x.id === g.hit.id)
@@ -573,11 +634,11 @@ function PlanEditor({ plan, onChange, onClose, accent, formKey }) {
       onChange(setDimOffset(g.base, el.id, offsetFromPoint(el, p.x, p.y)))
     } else if (g.kind === 'vertex') {
       const p = toPlan(e)
-      const s = snapPoint(g.base, p.x, p.y, { step, tol: 10 / ppu, exclude: g.refs })
+      const s = snapPoint(g.base, p.x, p.y, { layout, step, tol: 10 / ppu, exclude: g.refs })
       if (!g.pushed) { pushHistory(g.base); g.pushed = true }
       if (selId !== g.hit.id) setSelId(g.hit.id)
       setSnapHint(s.snapped ? { x: s.x, y: s.y } : null)
-      onChange(moveVertex(g.base, g.refs, s.x, s.y))
+      onChange(moveVertex(g.base, g.refs, s.x, s.y, layout))
     }
   }
 
@@ -614,37 +675,37 @@ function PlanEditor({ plan, onChange, onClose, accent, formKey }) {
       // that spot. A tap there selects the shape underneath instead, so every
       // item at a joint can be reached (a drag still moves the selected end).
       if (g.hit?.type === 'end') {
-        const under = hitTest(cur, p.x, p.y, { tol: 16 / ppu, selectedId: null, handleOff: 6 / ppu })
+        const under = hitTest(cur, p.x, p.y, { tol: 16 / ppu, selectedId: null, handleOff: 6 / ppu, layout })
         if (under?.type === 'pt') id = under.id
       }
       setSelId(id)
     } else if (tool === 'shape') {
-      const s = snapPoint(cur, p.x, p.y, { step, tol: 10 / ppu })
-      const r = addPoint(cur, shapeKind, s.x, s.y, '', undefined, { color: shapeColor, labelPos: 'right' })
+      const s = snapPoint(cur, p.x, p.y, { layout, step, tol: 10 / ppu })
+      const r = addPoint(cur, shapeKind, s.x, s.y, '', undefined, { color: shapeColor, labelPos: 'right' }, layout)
       commit(r.plan, cur)
       setSelId(r.id)
       setTool('select')
     } else if (tool === 'text') {
       // Text snaps to the grid only — not onto a nearby shape's centre.
-      const s = snapPoint(cur, p.x, p.y, { step, tol: 0 })
-      const r = addPoint(cur, 'text', s.x, s.y, '', undefined, { color: txColor })
+      const s = snapPoint(cur, p.x, p.y, { layout, step, tol: 0 })
+      const r = addPoint(cur, 'text', s.x, s.y, '', undefined, { color: txColor }, layout)
       commit(r.plan, cur)
       setSelId(r.id)
       setTool('select')
     } else if (tool === 'line') {
-      const s = snapPoint(cur, p.x, p.y, { step, tol: 10 / ppu })
+      const s = snapPoint(cur, p.x, p.y, { layout, step, tol: 10 / ppu })
       if (!pending) { setPending({ x: s.x, y: s.y }); return }
       if (Math.hypot(s.x - pending.x, s.y - pending.y) < 2) { setPending(null); return }
-      const r = addLine(cur, lnPattern, lnColor, lnWeight, pending.x, pending.y, s.x, s.y)
-      commit(r.plan, cur)
+      const r = addLine(cur, lnPattern, lnColor, lnWeight, pending.x, pending.y, s.x, s.y, '', undefined, layout)
+      commit(updateEl(r.plan, r.id, { cap: lnCap, capEnds: lnCapEnds }), cur)
       setSelId(r.id)
       setPending(null)
       setTool('select')
     } else if (tool === 'dim') {
-      const s = snapPoint(cur, p.x, p.y, { step, tol: 10 / ppu })
+      const s = snapPoint(cur, p.x, p.y, { layout, step, tol: 10 / ppu })
       if (!pending) { setPending({ x: s.x, y: s.y }); return }
       if (Math.hypot(s.x - pending.x, s.y - pending.y) < 4) { setPending(null); return }
-      const r = addDim(cur, dmColor, dmOrient, pending.x, pending.y, s.x, s.y)
+      const r = addDim(cur, dmColor, dmOrient, pending.x, pending.y, s.x, s.y, undefined, '', undefined, layout)
       commit(r.plan, cur)
       setSelId(r.id)
       setPending(null)
@@ -659,12 +720,12 @@ function PlanEditor({ plan, onChange, onClose, accent, formKey }) {
     onChange(updateEl(cur, id, { label: v }))
   }
   const changeProp = (id, patch) => commit(updateEl(planRef.current, id, patch))
-  const resizeSel  = (id, w, h) => commit(setPointSize(planRef.current, id, w, h))
-  const offsetSel  = (id, off) => commit(setDimOffset(planRef.current, id, off))
+  const resizeSel  = (id, w, h) => commit(setPointSize(planRef.current, id, w, h, layout))
+  const offsetSel  = (id, off) => commit(setDimOffset(planRef.current, id, off, layout))
   const deleteSel  = () => { commit(removeEl(planRef.current, selId)); setSelId(null) }
 
   const hint =
-    tool === 'select' ? 'Tap an item to edit it. Drag to move. Drag the N circle to turn north.'
+    tool === 'select' ? (layout.north ? 'Tap an item to edit it. Drag to move. Drag the N circle to turn north.' : 'Tap an item to edit it. Drag to move.')
     : tool === 'shape' ? `Tap the plan to place a ${pointKind(shapeKind).label.toLowerCase()}`
     : tool === 'text'  ? 'Tap where the text goes, then type it in the panel below'
     : tool === 'line'  ? (pending ? 'Tap the end point of the line' : 'Tap the start point of the line')
@@ -732,7 +793,7 @@ function PlanEditor({ plan, onChange, onClose, accent, formKey }) {
       }}>
         <div style={{ width: `${zoom * 100}%`, boxShadow: '0 1px 6px rgba(0,0,0,0.2)' }}>
           <PlanSvg
-            plan={plan} selectedId={selId} pending={pending} ppu={ppu} editing
+            plan={plan} layout={layout} selectedId={selId} pending={pending} ppu={ppu} editing
             snapMarks={snapMarks} snapHint={snapHint}
             svgRef={svgRef}
             onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp}
@@ -762,6 +823,8 @@ function PlanEditor({ plan, onChange, onClose, accent, formKey }) {
           <>
             <PatternChips value={lnPattern} weight={lnWeight} onPick={setLnPattern} accent={accent} />
             <WeightChips value={lnWeight} onPick={setLnWeight} accent={accent} />
+            <CapChips value={lnCap} weight={lnWeight} onPick={setLnCap} accent={accent} />
+            {lnCap !== 'none' && <CapEndChips value={lnCapEnds} onPick={setLnCapEnds} accent={accent} />}
             <ColorDots value={lnColor} onPick={setLnColor} />
           </>
         )}
@@ -795,6 +858,12 @@ function PlanEditor({ plan, onChange, onClose, accent, formKey }) {
               <div style={{ marginBottom: 10 }}>
                 <PatternChips value={sel.pattern} weight={sel.weight} onPick={v => changeProp(sel.id, { pattern: v })} accent={accent} />
                 <WeightChips value={sel.weight} onPick={v => changeProp(sel.id, { weight: v })} accent={accent} />
+                <CapChips value={sel.cap || 'none'} weight={sel.weight}
+                  onPick={v => changeProp(sel.id, { cap: v })} accent={accent} />
+                {sel.cap && sel.cap !== 'none' && (
+                  <CapEndChips value={sel.capEnds || 'end'}
+                    onPick={v => changeProp(sel.id, { capEnds: v })} accent={accent} />
+                )}
                 <ColorDots value={sel.color} onPick={c => changeProp(sel.id, { color: c })} />
               </div>
             )}
@@ -802,11 +871,11 @@ function PlanEditor({ plan, onChange, onClose, accent, formKey }) {
             {sel.t === 'dim' && (
               <div style={{ marginBottom: 10 }}>
                 <OrientChips value={sel.orient || 'aligned'}
-                  onPick={o => commit(setDimOffset(updateEl(planRef.current, sel.id, { orient: o }), sel.id, sel.offset))}
+                  onPick={o => commit(setDimOffset(updateEl(planRef.current, sel.id, { orient: o }), sel.id, sel.offset, layout))}
                   accent={accent} />
                 <ColorDots value={sel.color} onPick={c => changeProp(sel.id, { color: c })} />
                 <div style={{ marginTop: 8 }}>
-                  <Stepper label="Offset" value={sel.offset} accent={accent} min={-PLAN_H} max={PLAN_H}
+                  <Stepper label="Offset" value={sel.offset} accent={accent} min={-layout.box.h} max={layout.box.h}
                     onChange={v => offsetSel(sel.id, v)} />
                   <button onClick={() => offsetSel(sel.id, -sel.offset)}
                     style={{ ...btn(false, accent), padding: '6px 12px', fontSize: 12 }}>Flip to other side</button>
@@ -837,11 +906,11 @@ function PlanEditor({ plan, onChange, onClose, accent, formKey }) {
                   <LabelPosChips value={sel.labelPos} onPick={o => changeProp(sel.id, { labelPos: o })} accent={accent} />
                   {!fixed && <div style={{ marginTop: 8 }}>
                     {round ? (
-                      <Stepper label="Size" value={w} accent={accent} onChange={v => resizeSel(sel.id, v, v)} />
+                      <Stepper label="Size" value={w} accent={accent} onChange={v => resizeSel(sel.id, v, v)} max={sizeLimits(sel.kind, layout).w} />
                     ) : (
                       <>
-                        <Stepper label="Width"  value={w} accent={accent} onChange={v => resizeSel(sel.id, v, h)} />
-                        <Stepper label="Height" value={h} accent={accent} onChange={v => resizeSel(sel.id, w, v)} />
+                        <Stepper label="Width"  value={w} accent={accent} onChange={v => resizeSel(sel.id, v, h)} max={sizeLimits(sel.kind, layout).w} />
+                        <Stepper label="Height" value={h} accent={accent} onChange={v => resizeSel(sel.id, w, v)} max={sizeLimits(sel.kind, layout).h} />
                         <button onClick={() => resizeSel(sel.id, w, w)} style={{ ...btn(false, accent), padding: '6px 12px', fontSize: 12 }}>
                           Make square
                         </button>
@@ -868,7 +937,7 @@ function PlanEditor({ plan, onChange, onClose, accent, formKey }) {
         <PlanTemplatePicker
           open={tplOpen} onClose={() => setTplOpen(false)}
           formKey={formKey} plan={plan} accent={accent}
-          renderThumb={p => <PlanSvg plan={p} />}
+          renderThumb={p => <PlanSvg plan={p} layout={layout} />}
           onLoad={p => { commit(p); setSelId(null); setPending(null) }}
         />
       )}
@@ -880,7 +949,8 @@ function PlanEditor({ plan, onChange, onClose, accent, formKey }) {
 export function PlanSketchStep({ plan: rawPlan, onChange, formKey, accent = APP_ACCENT }) {
   const [editing, setEditing] = useState(false)
   const [tplOpen, setTplOpen] = useState(false)
-  const plan = useMemo(() => normalizePlan(rawPlan), [rawPlan])
+  const layout = layoutFor(formKey)
+  const plan = useMemo(() => normalizePlan(rawPlan, layout), [rawPlan, layout])
 
   const n = t => plan.els.filter(e => e.t === t).length
   const counts = [
@@ -900,12 +970,12 @@ export function PlanSketchStep({ plan: rawPlan, onChange, formKey, accent = APP_
       </p>
 
       <div style={{ border: `1.5px solid ${accent}40`, borderRadius: 10, overflow: 'hidden', marginBottom: 10 }}>
-        <PlanSvg plan={plan} />
+        <PlanSvg plan={plan} layout={layout} />
       </div>
 
       <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 10 }}>
         {empty ? 'Nothing drawn yet.'
-          : [...counts, plan.northSet ? 'north set' : 'north not set'].join(' · ')}
+          : [...counts, ...(layout.north ? [plan.northSet ? 'north set' : 'north not set'] : [])].join(' · ')}
       </div>
 
       <div style={{ display: 'flex', gap: 8 }}>
@@ -937,10 +1007,12 @@ export function PlanSketchStep({ plan: rawPlan, onChange, formKey, accent = APP_
         <PlanTemplatePicker
           open={tplOpen} onClose={() => setTplOpen(false)}
           formKey={formKey} plan={plan} accent={accent}
-          renderThumb={p => <PlanSvg plan={p} />}
+          renderThumb={p => <PlanSvg plan={p} layout={layout} />}
           onLoad={onChange}
         />
       )}
     </div>
   )
 }
+
+

@@ -13,6 +13,51 @@
 
 export const CHANGELOGS = [
   {
+    version: '2.31.0',
+    changes: [
+      {
+        heading: 'Arrows, dots and bars on line ends',
+        detail: "Lines on the plan can now finish with an arrow, a dot or a flat bar instead of a plain end. Choose the finish in the Line tool or on a selected line, and apply it to the start, the end or both ends. It takes the line's colour and weight, and prints on the form the same way.",
+      },
+    ],
+  },
+  {
+    version: '2.30.0',
+    changes: [
+      {
+        heading: 'LV Connection Record — Dimensioned Plan',
+        detail: "The LV Connection Record has a new Dimensioned Plan step, before Work Description. Draw the conductor route in the plan box: the pole, box, cables, ducts and dimensions. Mark an LV open point and label which side the connection was made to. Set the north arrow inside the printed circle. The drawing prints into the work plan box on the form, and plans can be saved as templates.",
+      },
+    ],
+  },
+  {
+    version: '2.29.0',
+    changes: [
+      {
+        heading: 'Electrical Distribution Record — Dimensioned Plan',
+        detail: "The Electrical Distribution Record has a new Dimensioned Plan step, before Comments. Draw the cable route in the plan box: the cables, ducts, boundaries, pits and poles, with dimensions and labels. Set the north arrow inside the printed circle, as on the Earth Test form. The drawing prints into the plan box on the form. Plans can be saved as templates for next time.",
+      },
+    ],
+  },
+  {
+    version: '2.28.1',
+    changes: [
+      {
+        heading: 'Rectangles and circles can be made bigger',
+        detail: "Rectangles and circles on the plan used to stop growing at a fixed size, which was too small for large features. They can now be resized up to the full size of the plan box: a rectangle up to the full width and height, a circle up to the full height of the box. The dot is still a fixed size.",
+      },
+    ],
+  },
+  {
+    version: '2.28.0',
+    changes: [
+      {
+        heading: 'Pole Record — Work Plan',
+        detail: "The Pole Record has a new Work Plan step, just before Work Description. Draw the job in the box on page 3 of the form: the old pole and its number, the new pole, the circuits between them, LV break positions and any kerb or road. Shapes, lines, dimensions and text work the same as on the Earth Test plan, and you can save a plan as a template for next time. There is no north arrow on this form, so none is drawn.",
+      },
+    ],
+  },
+  {
     version: '2.27.1',
     changes: [
       {
@@ -489,4 +534,5 @@ export const CHANGELOGS = [
     ],
   },
 ]
+
 

@@ -13,15 +13,17 @@
  */
 import { rgb, degrees } from 'pdf-lib'
 import { A4_HEIGHT } from './pdfDrawUtils'
+import { EARTH_LAYOUT } from './planLayouts'
 import {
-  PLAN_BOX, LABEL_SIZE, INK_RGB,
+  LABEL_SIZE, INK_RGB,
   lineWidth, lineDash, colorOf, labelRgb, pointKind, pointSize, labelLayout,
-  dimGeometry, northGeometry, normalizePlan,
+  dimGeometry, northGeometry, normalizePlan, capGeometry,
 } from './planModel'
 
-export function drawPlan({ page, draw, font, plan, box = PLAN_BOX, pageHeight = A4_HEIGHT }) {
+export function drawPlan({ page, draw, font, plan, layout = EARTH_LAYOUT, pageHeight = A4_HEIGHT }) {
   if (!plan) return
-  const p = normalizePlan(plan)
+  const box = layout.box
+  const p = normalizePlan(plan, layout)
   if (p.els.length === 0 && !p.northSet) return
 
   const X = lx => box.x + lx
@@ -70,6 +72,23 @@ export function drawPlan({ page, draw, font, plan, box = PLAN_BOX, pageHeight = 
     })
   }
 
+  // 1b — line ends (arrows, dots, bars): same colour and weight as the line
+  for (const e of p.els) {
+    if (e.t !== 'ln') continue
+    const c = rgb(...colorOf(e.color).rgb)
+    for (const g of capGeometry(e)) {
+      for (const s of g.lines) {
+        page.drawLine({ start: pt(s[0], s[1]), end: pt(s[2], s[3]), thickness: lineWidth(e), color: c })
+      }
+      if (g.dot) {
+        page.drawCircle({
+          x: X(g.dot.x), y: Y(g.dot.y), size: g.dot.r,
+          color: c, borderColor: c, borderWidth: 0,
+        })
+      }
+    }
+  }
+
   // 2 — dimensions (extension lines, dimension line, arrowheads)
   for (const e of p.els) {
     if (e.t !== 'dim') continue
@@ -113,8 +132,8 @@ export function drawPlan({ page, draw, font, plan, box = PLAN_BOX, pageHeight = 
   }
 
   // 5 — north arrow (only once the tech has set it)
-  if (p.northSet) {
-    const g = northGeometry(p.north)
+  if (p.northSet && layout.north) {
+    const g = northGeometry(p.north, layout)
     page.drawLine({ start: pt(g.tail.x, g.tail.y), end: pt(g.head.x, g.head.y), thickness: 1.4, color: ink })
     for (const w of g.wings) {
       page.drawLine({ start: pt(g.head.x, g.head.y), end: pt(w.x, w.y), thickness: 1.4, color: ink })
@@ -122,3 +141,5 @@ export function drawPlan({ page, draw, font, plan, box = PLAN_BOX, pageHeight = 
     drawLabel('N', g.label.x, g.label.y, 'middle', 0, INK_RGB, 8)
   }
 }
+
+

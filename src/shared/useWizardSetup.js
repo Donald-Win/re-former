@@ -62,7 +62,7 @@
 import { useCallback } from 'react'
 import { devFillState, devFillStateAllOptions } from './devFillState'
 
-export function useWizardSetup(d, setD, step, formType) {
+export function useWizardSetup(d, setD, step, formType, overrides = null) {
   // Convenience field setter — supports both calling styles:
   //   Curried:  set('fieldName')(value)   — used as onChange prop
   //   Two-arg:  set('fieldName', value)   — used inline
@@ -82,9 +82,14 @@ export function useWizardSetup(d, setD, step, formType) {
   // DEV-only — dead-code eliminated by Vite/Rollup in production builds.
   // `allOptions` is the boolean WizardShell's 🧪/🔬 toggle sends: true while
   // in "show every option at once" mode, false in normal realistic-fill mode.
+  // `overrides` replaces specific keys after the fill (e.g. a form-sized sample plan).
   const handleDevFill = import.meta.env.DEV
-    ? (allOptions) => setD(allOptions ? devFillStateAllOptions : devFillState)
+    ? (allOptions) => setD(prev => {
+        const filled = allOptions ? devFillStateAllOptions(prev) : devFillState(prev)
+        return overrides ? { ...filled, ...overrides } : filled
+      })
     : undefined
 
   return { set, handleDevFill }
 }
+

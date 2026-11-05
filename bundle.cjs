@@ -2,8 +2,23 @@
 /**
  * bundle.cjs — Project codebase bundler for AI-assisted development.
  *
- * ─────────────────────────────────────────────────────────────────────────────
+ * ────────────────────────────────────────────────────────────────────────────
  * BUNDLE TOOL VERSION: 2.0.1   (with null-byte safety guard)
+ * of the app's APP_VERSION in src/App.jsx / CHANGELOGS in src/changelog.js)
+ *
+ * Tool changelog
+ *   2.0.1 — Fixed: binary files (e.g. .ttf fonts) no longer leak NUL bytes
+ *           into the dump. Added font/archive/office extensions to the
+ *           ignore list and a NUL-byte sniff as a catch-all.
+ *   2.0.0 — Added --profile presets (shared / new-wizard / wizard:<name>),
+ *           --changed and --since=<git-ref> delta modes, --out override,
+ *           --list-profiles / --help, a self-check footer, a binary-file
+ *           note, and a top-5 largest-file report to the console. Default
+ *           no-arg behaviour (full scan → ~/project-codebase.txt) is
+ *           UNCHANGED, so existing workflows and Project Knowledge uploads
+ *           keep working exactly as before.
+ *   1.0.0 — Original: full recursive scan, single output file.
+>>>>>>> dev
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
@@ -18,7 +33,14 @@ const ignoreDirs = [
   '.vscode', 'public/icons', 'coverage', '.cache', '.netlify', '.vercel',
 ];
 const ignoreFiles = ['package-lock.json', 'yarn.lock', 'pnpm-lock.yaml', 'bundle.cjs', '.DS_Store'];
-const ignoreExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.ico', '.svg', '.pdf', '.zip', '.mp4', '.mov', '.bak', '.log'];
+const ignoreExtensions = [
+  '.png', '.jpg', '.jpeg', '.gif', '.ico', '.svg', '.webp', '.avif', '.heic', '.bmp',
+  '.pdf', '.zip', '.gz', '.tar', '.7z', '.rar', '.mp4', '.mov', '.webm', '.mp3', '.wav', '.ogg',
+  '.ttf', '.otf', '.woff', '.woff2', '.eot',           // fonts are binary — caused null bytes in the dump
+  '.wasm', '.so', '.dylib', '.dll', '.exe', '.bin', '.class', '.jar',
+  '.xlsx', '.xls', '.docx', '.doc', '.pptx', '.psd', '.sqlite', '.db',
+  '.bak', '.log',
+];
 
 const HOME = os.homedir();
 const CACHE_FILE = path.join(HOME, '.bundle-cache.json');
@@ -105,6 +127,20 @@ function recordIncluded(relativePath) {
 
 const OWN_OUTPUT_PATTERN = /^project-codebase(-[\w.-]+)?\.txt$/;
 
+// Safety net: any file containing a NUL byte in its first 8 KB is binary,
+// whatever its extension. Mirrors how git decides a file is binary.
+function isBinaryFile(absPath) {
+  try {
+    const fd = fs.openSync(absPath, 'r');
+    const buf = Buffer.alloc(8192);
+    const n = fs.readSync(fd, buf, 0, buf.length, 0);
+    fs.closeSync(fd);
+    return buf.subarray(0, n).includes(0);
+  } catch {
+    return false;
+  }
+}
+
 function queueTextFile(absPath, relativePath) {
   if (queuedAbsPaths.has(absPath)) return;
   const ext = path.extname(absPath).toLowerCase();
@@ -115,6 +151,10 @@ function queueTextFile(absPath, relativePath) {
     OWN_OUTPUT_PATTERN.test(fileName) ||
     fileName === '.bundle-cache.json'
   ) {
+    skippedFilesCount++;
+    return;
+  }
+  if (isBinaryFile(absPath)) {
     skippedFilesCount++;
     return;
   }

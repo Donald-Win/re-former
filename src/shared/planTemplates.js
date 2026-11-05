@@ -11,6 +11,7 @@
  *   { id, formKey, name, savedAt, plan }
  */
 import { normalizePlan } from './planModel'
+import { layoutFor } from './planLayouts'
 
 export const NAME_MAX = 60
 
@@ -29,8 +30,8 @@ export function makeTemplateId() {
 }
 
 /** A plan with its north arrow cleared, so north must be set for each drawing. */
-export function withoutNorth(plan) {
-  return { ...normalizePlan(plan), north: 0, northSet: false }
+export function withoutNorth(plan, layout) {
+  return { ...normalizePlan(plan, layout), north: 0, northSet: false }
 }
 
 /** The saved record for a plan — north is never stored. */
@@ -40,7 +41,7 @@ export function makeTemplate({ id, formKey, name, plan, now = new Date() }) {
     formKey,
     name: cleanTemplateName(name),
     savedAt: now.toISOString(),
-    plan: withoutNorth(plan),
+    plan: withoutNorth(plan, layoutFor(formKey)),
   }
 }
 
@@ -67,7 +68,7 @@ export function cleanImported(raw) {
     formKey: raw.formKey,
     name,
     savedAt: typeof raw.savedAt === 'string' ? raw.savedAt : new Date(0).toISOString(),
-    plan: withoutNorth(raw.plan),
+    plan: withoutNorth(raw.plan, layoutFor(raw.formKey)),
   }
 }
 
@@ -86,3 +87,4 @@ export function isSavablePlan(plan) {
   const p = normalizePlan(plan)
   return p.els.length > 0
 }
+
