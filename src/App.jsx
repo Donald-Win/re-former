@@ -12,6 +12,7 @@ import LvBoxWizard from './wizards/LvBoxWizard'
 import ZoneSubWizard from './wizards/ZoneSubWizard'
 import HVInspectionWizard from './wizards/HVInspectionWizard'
 import DistributionTransformerWizard from './wizards/DistributionTransformerWizard'
+import DistPanelWizard from './wizards/DistPanelWizard'
 import { AuthGate } from './auth/AuthGate'
 import { ensureFreshAccess } from './auth/auth'
 import { UserSettings } from './shared/UserSettings'
@@ -19,7 +20,7 @@ import { getUserPrefs } from './shared/userPrefs'
 import { CHANGELOGS } from './changelog'
 import { PdfCanvasPreview } from './shared/PdfCanvasPreview'
 
-const APP_VERSION = '2.31.0'
+const APP_VERSION = '2.32.0'
 
 // ── Wizard config (module-level — never recreated) ────────────────────────────
 const WIZARD_CONFIG = {
@@ -85,6 +86,13 @@ const WIZARD_CONFIG = {
     fileName:  '220F028B.pdf',
     accent:    '#4f46e5',
     Component: DistributionTransformerWizard,
+  },
+  '360S014EI': {
+    label:     '360S014EI – As-built Underground Network Distribution Panel Layout Record',
+    pdfName:   'As-built Underground Network Distribution Panel Layout Record',
+    fileName:  '360S014EI.pdf',
+    accent:    '#4f46e5',
+    Component: DistPanelWizard,
   },
   '360S014EF': {
     label:     '360S014EF – As-built Zone Substation Equipment Record',
@@ -1293,5 +1301,4 @@ function App() {
 }
 
 export default App
-
 
