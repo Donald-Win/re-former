@@ -13,6 +13,15 @@
 
 export const CHANGELOGS = [
   {
+    version: '2.32.0',
+    changes: [
+      {
+        heading: 'New form: As-built Underground Network Distribution Panel Layout Record',
+        detail: "360S014EI can now be filled out in the app. Tap it in Browse All Forms (or choose \"Fill Out Form\") to enter the panel details, the fuse ways fitted, and up to 16 rows of links or fuses. Each row takes its destination, LV disconnector, Link or Fuse, Open or Closed, fuse size, holder rating and cable details. Rows you leave untouched print blank.",
+      },
+    ],
+  },
+  {
     version: '2.31.0',
     changes: [
       {
@@ -534,5 +543,4 @@ export const CHANGELOGS = [
     ],
   },
 ]
-
 

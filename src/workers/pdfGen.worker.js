@@ -54,6 +54,8 @@ const GENERATORS = {
     () => import('../wizards/generators/TransformerPdfGenerator.js'),
   ZoneSubPdfGenerator:
     () => import('../wizards/generators/ZoneSubPdfGenerator.js'),
+  DistPanelPdfGenerator:
+    () => import('../wizards/generators/DistPanelPdfGenerator.js'),
 }
 
 // ── Exposed API ───────────────────────────────────────────────────────────────
