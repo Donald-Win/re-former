@@ -124,26 +124,15 @@ export async function sharePdf(pdfBytes, filename, blobUrl, onSuccess) {
         if (err.name === 'AbortError') { return }
       }
 
-      // Attempt 2: url share
-      try {
-        log.push('Attempting navigator.share({ url })')
-        await navigator.share({ url: getUrl() })
-        log.push('SUCCESS — url share')
-        onSuccess?.()
-        return
-      } catch (err) {
-        log.push(`FAILED: ${err.name}: ${err.message}`)
-        if (err.name === 'AbortError') { return }
-      }
     }
 
-    // Fallback
+    // Fallback: open the PDF in a new tab so it can be printed or saved.
     log.push('Falling back to window.open')
     window.open(getUrl(), '_blank')
     // The tech has now been handed the PDF (in a new tab) exactly as
     // intended by this fallback path — treat that as a successful share so
-    // the draft/autosave is cleared here too, same as the two navigator.share
-    // paths above. Without this, any device/browser without navigator.share
+    // the draft/autosave is cleared here too, same as the navigator.share
+    // path above. Without this, any device/browser without navigator.share
     // (or where both share attempts fail for a non-abort reason) would never
     // clear the draft, leaving a stale "unsaved progress" prompt next time
     // the tech reopens this form.
@@ -155,4 +144,5 @@ export async function sharePdf(pdfBytes, filename, blobUrl, onSuccess) {
     releaseOwnUrl()
   }
 }
+
 

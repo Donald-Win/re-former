@@ -15,6 +15,10 @@ import { useDraftPicker } from '../shared/useDraftPicker'
 import { CrashRecoveryBanner } from '../shared/CrashRecoveryBanner'
 import { APP_ACCENT, WIZARD_COLORS } from '../shared/constants'
 import { createWorkerGenerator } from '../shared/pdfWorkerClient'
+import {
+  POSITION_COUNT, WAY_COUNT, wayLabel, allSlots, rowUsed, usedRowIndexes,
+  tapFull, tapA, tapB,
+} from '../shared/distPanelRows'
 
 // ── PDF generation runs off the main thread via the shared PDF worker ────────
 const generateEiPdf = createWorkerGenerator('DistPanelPdfGenerator', 'generateEiPdf')
@@ -26,8 +30,6 @@ const EI_BG      = WIZARD_COLORS.bg
 const EI_MID     = WIZARD_COLORS.mid
 const EI_BORDER  = WIZARD_COLORS.border
 
-const POSITION_COUNT     = 8
-const WAY_COUNT          = 16
 const OWNERSHIP_OPTIONS  = ['Powerco', 'Private', 'Other']
 const FUSE_WAY_OPTIONS   = ['3', '3.5', '4', '6', '8', 'Other', 'Street Light Relay']
 const LINK_FUSE_OPTIONS  = ['Link', 'Fuse']
@@ -42,35 +44,6 @@ const EI_STEPS = [
 ]
 const PHOTO_STEP   = 3
 const PREVIEW_STEP = 4
-
-// ── Grid model ────────────────────────────────────────────────────────────────
-// The panel has 8 numbered positions. For each position the tech taps:
-//   full — the number: one full-width carrier (row a)
-//   a / b — the half under the number: half-width carriers (rows a and b)
-// Rows are stored as a flat list of 16: index 0 = 1a, 1 = 1b, 2 = 2a … 15 = 8b.
-const wayIndex = (num, letter) => (num - 1) * 2 + (letter === 'a' ? 0 : 1)
-const wayLabel = i => `${Math.floor(i / 2) + 1}${i % 2 === 0 ? 'a' : 'b'}`
-
-const blankSlot = () => ({ full: false, a: false, b: false })
-const slotAt    = (slots, n) => (slots && slots[n - 1]) || blankSlot()
-const allSlots  = raw => Array.from({ length: POSITION_COUNT }, (_, k) => slotAt(raw, k + 1))
-
-// Whether a row (flat index) is in use. Full width lights row a.
-const rowUsed = (slots, i) => {
-  const s = slotAt(slots, Math.floor(i / 2) + 1)
-  return i % 2 === 0 ? (s.full || s.a) : s.b
-}
-const usedRowIndexes = slots =>
-  Array.from({ length: WAY_COUNT }, (_, i) => i).filter(i => rowUsed(slots, i))
-
-// Cells that are no longer in use lose their row data, so nothing stale prints.
-const pruneWays = (slots, ways) => ways.map((r, i) => (rowUsed(slots, i) ? r : emptyWay()))
-
-// Tap transitions. Each cell toggles on its own. A full-width carrier and a
-// half carrier in the same position replace each other.
-const tapFull = s => (s.full ? { ...s, full: false } : { full: true, a: false, b: false })
-const tapA    = s => (s.a ? { ...s, a: false } : { full: false, a: true, b: s.b })
-const tapB    = s => (s.b ? { ...s, b: false } : { full: false, a: s.a, b: true })
 
 const emptyWay  = () => ({
   destination: '', manufacturer: '', model: '',
@@ -257,9 +230,18 @@ export default function DistPanelWizard({ onClose }) {
   const { pdfBytes, pdfBlobUrl, triggerGenerate, clearPdf, buildPreviewContent } =
     usePdfGenerate(generateEiPdf)
 
+  // Dev fill: the realistic fill can't set the fuse-way choices or the
+  // ownership/material options (they're arrays and choice values), so set them
+  // here so the ticks and the "Other" text get exercised.
   const { set, handleDevFill } = useWizardSetup(d, setD, step, FORM_KEY, {
     slots: DEV_SLOTS,
     ways: DEV_WAYS,
+    ownership: 'Powerco',
+    ownershipOther: '',
+    panelManufacturer: 'ABB',
+    panelMaterial: 'Steel',
+    fuseWays: ['3', '6', 'Other'],
+    fuseWayOther: 'Test fuse',
   })
   const { clearDraft: clearFormDraft } = useDraft(FORM_KEY, d, step, photos)
   const crashRecovery = useCrashRecovery({
@@ -267,10 +249,12 @@ export default function DistPanelWizard({ onClose }) {
   })
 
   // ── Grid taps ─────────────────────────────────────────────────────────────
+  // Changing a carrier only changes which rows are shown and printed. The
+  // details typed into a row are kept, so a mis-tap never deletes them.
   const applySlot = (n, fn) => setD(p => {
     const next = allSlots(p.slots)
     next[n - 1] = fn(next[n - 1])
-    return { ...p, slots: next, ways: pruneWays(next, p.ways) }
+    return { ...p, slots: next }
   })
   const onFull = n => applySlot(n, tapFull)
   const onA    = n => applySlot(n, tapA)
@@ -432,3 +416,4 @@ export default function DistPanelWizard({ onClose }) {
     </>
   )
 }
+

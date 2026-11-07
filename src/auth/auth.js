@@ -192,7 +192,9 @@ export function addOnlineListener() {
 
 // ── DEBUG HELPERS (available in browser console) ─────────────────────────────
 
-window.__reformerAuth = {
+// Console helpers for development only. Left out of production builds so a
+// field device can't reset its own identity or clear the cached access result.
+if (import.meta.env.DEV) window.__reformerAuth = {
   getDeviceId,
   getCachedResult,
   checkAccessOnline,
@@ -206,4 +208,5 @@ window.__reformerAuth = {
     console.log('[re-former auth] Device ID and cache cleared. Reload to generate new ID.')
   },
 }
+
 

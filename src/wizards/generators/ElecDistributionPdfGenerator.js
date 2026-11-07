@@ -31,6 +31,12 @@ const getTemplateUrl = () =>
 // FIELDS — every simple, named field.
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Visibility rules — the underground details only show when the main is
+// Underground, and the duct details only when the cable is ducted (see step 2 UI).
+const when   = (cond, fn) => d => (cond(d) ? fn(d) : '')
+const isUG   = d => d.distributionMain === 'Underground'
+const isDuct = d => isUG(d) && d.cableDuctUsed === 'Yes'
+
 export const FIELDS = {
 
   // ── Header ───────────────────────────────────────────────────────────────────
@@ -63,30 +69,30 @@ export const FIELDS = {
   },
 
   // ── Underground cable details ───────────────────────────────────────────────
-  ductUsedYes:      { type: 'check', x: 135, y: 318, value: d => d.cableDuctUsed === 'Yes' },
-  ductUsedNo:       { type: 'check', x: 199, y: 318, value: d => d.cableDuctUsed === 'No' },
-  ductTypeNew:      { type: 'check', x: 270, y: 318, value: d => d.cableDuctUsed === 'Yes' && d.cableDuctType === 'New' },
-  ductTypeExisting: { type: 'check', x: 327, y: 318, value: d => d.cableDuctUsed === 'Yes' && d.cableDuctType === 'Existing' },
-  cappedYes:        { type: 'check', x: 441, y: 318, value: d => d.capped === 'Yes' },
-  cappedNo:         { type: 'check', x: 505, y: 318, value: d => d.capped === 'No' },
-  numberOfDucts:    { type: 'text', align: 'left', x: 130, y: 338, value: d => d.numberOfDucts },
-  ductSize:         { type: 'text', align: 'left', x: 270, y: 338, value: d => d.ductSize },
-  drawWireYes:      { type: 'check', x: 441, y: 337, value: d => d.drawWire === 'Yes' },
-  drawWireNo:       { type: 'check', x: 505, y: 337, value: d => d.drawWire === 'No' },
+  ductUsedYes:      { type: 'check', x: 135, y: 318, value: when(isUG, d => d.cableDuctUsed === 'Yes') },
+  ductUsedNo:       { type: 'check', x: 199, y: 318, value: when(isUG, d => d.cableDuctUsed === 'No') },
+  ductTypeNew:      { type: 'check', x: 270, y: 318, value: when(isDuct, d => d.cableDuctUsed === 'Yes' && d.cableDuctType === 'New') },
+  ductTypeExisting: { type: 'check', x: 327, y: 318, value: when(isDuct, d => d.cableDuctUsed === 'Yes' && d.cableDuctType === 'Existing') },
+  cappedYes:        { type: 'check', x: 441, y: 318, value: when(isDuct, d => d.capped === 'Yes') },
+  cappedNo:         { type: 'check', x: 505, y: 318, value: when(isDuct, d => d.capped === 'No') },
+  numberOfDucts:    { type: 'text', align: 'left', x: 130, y: 338, value: when(isDuct, d => d.numberOfDucts) },
+  ductSize:         { type: 'text', align: 'left', x: 270, y: 338, value: when(isDuct, d => d.ductSize) },
+  drawWireYes:      { type: 'check', x: 441, y: 337, value: when(isDuct, d => d.drawWire === 'Yes') },
+  drawWireNo:       { type: 'check', x: 505, y: 337, value: when(isDuct, d => d.drawWire === 'No') },
 
   // ── Other services in trench ────────────────────────────────────────────────
-  otherServicesGas:      { type: 'check', x: 158, y: 356, value: d => (d.otherServicesInTrench || []).includes('Gas') },
-  otherServicesTelecom:  { type: 'check', x: 215, y: 356, value: d => (d.otherServicesInTrench || []).includes('Telecom') },
-  otherServicesWater:    { type: 'check', x: 315, y: 356, value: d => (d.otherServicesInTrench || []).includes('Water') },
+  otherServicesGas:      { type: 'check', x: 158, y: 356, value: when(isUG, d => (d.otherServicesInTrench || []).includes('Gas')) },
+  otherServicesTelecom:  { type: 'check', x: 215, y: 356, value: when(isUG, d => (d.otherServicesInTrench || []).includes('Telecom')) },
+  otherServicesWater:    { type: 'check', x: 315, y: 356, value: when(isUG, d => (d.otherServicesInTrench || []).includes('Water')) },
   otherServicesOtherText: {
     type: 'text', align: 'left', x: 430, y: 357,
-    value: d => ((d.otherServicesInTrench || []).includes('Other') ? d.otherServicesOther : ''),
+    value: when(isUG, d => ((d.otherServicesInTrench || []).includes('Other') ? d.otherServicesOther : '')),
   },
 
   // ── GPS required ─────────────────────────────────────────────────────────────
-  gpsYes:   { type: 'check', x: 158, y: 381, value: d => d.gpsRequired === 'Yes' },
-  gpsNo:    { type: 'check', x: 215, y: 381, value: d => d.gpsRequired === 'No' },
-  gpsFiles: { type: 'text', align: 'left', x: 425, y: 383, value: d => (d.gpsRequired === 'Yes' ? d.gpsFiles : '') },
+  gpsYes:   { type: 'check', x: 158, y: 381, value: when(isUG, d => d.gpsRequired === 'Yes') },
+  gpsNo:    { type: 'check', x: 215, y: 381, value: when(isUG, d => d.gpsRequired === 'No') },
+  gpsFiles: { type: 'text', align: 'left', x: 425, y: 383, value: when(isUG, d => (d.gpsRequired === 'Yes' ? d.gpsFiles : '')) },
 
   // ── Comments (multi-line wrapped text) ──────────────────────────────────────
   comments: { type: 'wrap', x: 195, y: 701, maxWidth: 370, lineHeight: 14, maxLines: 4, value: d => d.comments },

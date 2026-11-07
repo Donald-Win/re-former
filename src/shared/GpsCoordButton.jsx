@@ -170,8 +170,10 @@ export function GpsCoordButton({ onCoords, accent = '#6366f1' }) {
       )}
       <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 6, lineHeight: 1.4 }}>
         Fills North / East from your device's GPS, converted to NZTM2000. Works offline.
-        {' '}Altitude is filled too when your device reports one.
+        {' '}Height is filled too when your device reports one. It is GPS height above the
+        reference ellipsoid, not height above sea level, so check it before relying on it.
       </div>
     </div>
   )
 }
+

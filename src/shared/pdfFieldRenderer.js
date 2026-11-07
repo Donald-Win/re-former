@@ -203,7 +203,9 @@ export async function renderFields(ctx, fields, d) {
         draw.tWrap(f.x, f.y, value, f.maxWidth, f.size, f.lineHeight, f.maxLines)
         break
       case 'signature':
-        await drawSignature(pdfDoc, page, value, f.x, f.y, f.maxW, f.maxH)
+        // Pass the real page height: landscape pages are not A4 portrait, and
+        // drawSignature defaults to A4 height when it isn't given one.
+        await drawSignature(pdfDoc, page, value, f.x, f.y, f.maxW, f.maxH, page.getHeight())
         break
       default:
         console.warn(`[renderFields] Field "${key}" has unknown type "${f.type}" — skipped`)
@@ -301,3 +303,4 @@ export function renderMatrixRow(draw, colX, y, values, opts = {}) {
     }
   })
 }
+

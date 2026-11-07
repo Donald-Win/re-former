@@ -82,7 +82,8 @@ export function drawPlan({ page, draw, font, plan, layout = EARTH_LAYOUT, pageHe
       }
       if (g.dot) {
         page.drawCircle({
-          x: X(g.dot.x), y: Y(g.dot.y), size: g.dot.r,
+          // pdf-lib's drawCircle `size` is the DIAMETER; dot.r is a radius.
+          x: X(g.dot.x), y: Y(g.dot.y), size: g.dot.r * 2,
           color: c, borderColor: c, borderWidth: 0,
         })
       }
@@ -112,7 +113,8 @@ export function drawPlan({ page, draw, font, plan, layout = EARTH_LAYOUT, pageHe
     // always passed explicitly (same idea as circ() in pdfDrawUtils).
     if (k.shape === 'circle') {
       page.drawCircle({
-        x: X(e.x), y: Y(e.y), size: w / 2,
+        // `w` is the shape's diameter (see pointSize); drawCircle takes a diameter.
+        x: X(e.x), y: Y(e.y), size: w,
         borderColor: c, borderWidth: 1.2, color: c,
         opacity: k.fillOpacity, borderOpacity: 1,
       })

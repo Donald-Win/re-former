@@ -20,7 +20,7 @@ import { getUserPrefs } from './shared/userPrefs'
 import { CHANGELOGS } from './changelog'
 import { PdfCanvasPreview } from './shared/PdfCanvasPreview'
 
-const APP_VERSION = '2.32.0'
+const APP_VERSION = '2.32.1'
 
 // ── Wizard config (module-level — never recreated) ────────────────────────────
 const WIZARD_CONFIG = {
@@ -1301,4 +1301,5 @@ function App() {
 }
 
 export default App
+
 

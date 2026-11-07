@@ -17,9 +17,11 @@
  *   False northing:                10,000,000 m
  *   Central meridian scale factor: 0.9996
  *
- * A device's WGS84 fix is treated as equivalent to NZGD2000 for this
- * purpose — the practical difference between the two datums is a few
- * centimetres, well within the precision needed for as-built field records.
+ * A device's WGS84 fix is used as if it were NZGD2000. The two are not
+ * identical: NZGD2000 is fixed at the 1997 epoch, and NZ moves a few
+ * centimetres a year, so at today's epoch the difference can be of the order
+ * of a metre. Fine for locating a pole on a record; anything needing better
+ * than metre accuracy should go through LINZ's transformation tools.
  *
  * Reference: LINZS25002 "NZGD2000 map projections" (Land Information
  * New Zealand).
@@ -85,3 +87,4 @@ export function latLonToNztm(latDeg, lonDeg) {
     easting:  Math.round(easting),
   }
 }
+

@@ -22,6 +22,7 @@ import { PDFDocument, rgb } from 'pdf-lib'
 import { embedAppFont, fetchPdfTemplate, createPageDrawer, drawSignature, DEFAULT_INK } from '../../shared/pdfDrawUtils'
 import { renderFields, renderGridRow } from '../../shared/pdfFieldRenderer'
 import { appendPhotosToPdf } from '../../shared/appendPhotosToPdf'
+import { rowUsed } from '../../shared/distPanelRows'
 
 const getTemplateUrl = () =>
   `${import.meta.env.BASE_URL}forms/360S014EI.pdf`
@@ -183,7 +184,10 @@ export async function generateEiPdf(d, photos = []) {
   await renderFields({ pdfDoc, page: p1, draw }, FIELDS, d)
 
   const { rowY, cols, size } = GRIDS.ways
+  // Print only the rows whose carrier is selected. Details for unselected rows
+  // are kept in the wizard state but must not reach the form.
   ;(d.ways || []).slice(0, rowY.length).forEach((row, i) => {
+    if (!rowUsed(d.slots, i)) return
     renderGridRow(draw, cols, rowY[i], row, size)
   })
 
@@ -208,3 +212,4 @@ export async function generateEiPdf(d, photos = []) {
 
   return new Uint8Array(await pdfDoc.save())
 }
+

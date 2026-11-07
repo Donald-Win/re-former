@@ -23,6 +23,9 @@ window.addEventListener('appinstalled', () => {
 // existed only to hardcode '/sw.js' instead of '/re-former/sw.js'.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
+    // On a first visit there's no controller yet, and the new worker claims the
+    // page when it activates. That is not an update, so it must not reload.
+    const hadController = !!navigator.serviceWorker.controller
     navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`)
       .then(reg => {
         reg.update()
@@ -33,7 +36,7 @@ if ('serviceWorker' in navigator) {
     // When SW controller changes (new SW activated by user choice), reload the page
     let refreshing = false
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (!refreshing) {
+      if (hadController && !refreshing) {
         refreshing = true
         window.location.reload()
       }
@@ -46,3 +49,4 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <App />
   </React.StrictMode>
 )
+

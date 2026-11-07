@@ -2,95 +2,73 @@
  * pdfWorkerClient.js — Shared Comlink client for the PDF-generation Web
  * Worker (src/workers/pdfGen.worker.js).
  *
- * A single worker instance is created lazily and reused for every PDF
- * generation across every wizard for the lifetime of the app session. This
- * is what actually moves PDF generation off the main thread: the pdf-lib
- * template load, every field draw call, and JPEG re-compression of attached
- * photos now all run on a background thread, so the UI never freezes while
- * a form generates.
+ * One worker is created lazily and reused for every PDF generation across
+ * every wizard for the lifetime of the app session. This moves PDF generation
+ * off the main thread: the template load, every field draw, and JPEG
+ * re-compression of attached photos all run on a background thread.
  *
- * ── Worker crash recovery (v2.20.3) ──────────────────────────────────────
- * A Web Worker can die silently — most commonly from running out of memory
- * while processing a large batch of photo attachments. When that happens:
- *   - The in-flight Comlink call never resolves or rejects on its own.
- *   - No JS exception is thrown on the main thread.
- *   - Every subsequent call to the SAME dead worker instance also hangs,
- *     because Comlink is still waiting on a postMessage reply that will
- *     never arrive.
- * Previously the module-level `_worker`/`pdfApi` were created once and
- * never replaced, so a single crash permanently broke PDF generation for
- * the rest of the session — every later attempt would silently hang until
- * usePdfGenerate's 30-second UI timeout fired, and then hang again on
- * retry, forever, since the same wedged worker was still being used.
+ * ── Worker crash recovery ─────────────────────────────────────────────────
+ * A Web Worker can die silently (most commonly from running out of memory on
+ * a large photo batch). When that happens the in-flight call never settles,
+ * and every later call to that same instance also hangs.
  *
- * Two layers of recovery are used together:
+ * Two layers of recovery:
  *   1. Proactive: the worker's own 'error' and 'messageerror' events tear
- *      down the current worker/proxy immediately, so the NEXT call starts
- *      fresh rather than reusing a known-bad instance.
- *   2. Reactive: each generate() call races against its own internal
- *      timeout (shorter than the UI's 30s timeout in usePdfGenerate, so it
- *      fires first). If a call times out — which covers the "died silently,
- *      no error event, just never replies" case — the worker is torn down
- *      and recreated so the *next* attempt isn't guaranteed to hang too.
- *      The failed call still surfaces its error to the caller as normal;
- *      usePdfGenerate's existing retry button already lets the tech try
- *      again, and that retry now gets a healthy worker.
+ *      that worker down immediately, so the next call starts fresh.
+ *   2. Reactive: each call races an internal timeout (shorter than the UI's
+ *      30-second timeout in usePdfGenerate). If it fires, the worker that
+ *      made the call is torn down, so a retry gets a healthy worker.
+ *
+ * Teardown is scoped to the instance that failed. Earlier versions tore down
+ * whichever worker was current, so a stale timeout could kill a newer worker
+ * that another call was relying on.
  *
  * Usage (see any wizard file for a live example):
  *   import { createWorkerGenerator } from '../shared/pdfWorkerClient'
- *
- *   // Module scope — created once, not per render:
  *   const generatePolePdf = createWorkerGenerator('PolePdfGenerator', 'generatePolePdf')
- *
- *   // Inside the component:
  *   const { triggerGenerate, ... } = usePdfGenerate(generatePolePdf)
  *
- * Why no change was needed in usePdfGenerate.jsx:
- * createWorkerGenerator returns a plain 2-argument function,
- * `(d, photos) => Promise<Uint8Array>`. usePdfGenerate's thunk-detection
- * (`generatorFn.length === 0`) only treats *zero*-argument functions as a
- * lazy-import thunk to be resolved before calling; a 2-argument function is
- * treated as a "direct generator" and called immediately as `fn(d, photos)`
- * — which is exactly what this returns. So this drops in as a straight
- * replacement for the old lazy-import thunks.
+ * createWorkerGenerator returns a two-argument function, so usePdfGenerate
+ * calls it directly (it only resolves zero-argument thunks).
  */
 import PdfGenWorker from '../workers/pdfGen.worker.js?worker'
 import * as Comlink from 'comlink'
 
 // Fires before usePdfGenerate's 30s UI-facing GENERATION_TIMEOUT_MS, so a
-// wedged worker is detected and torn down here first, rather than the user
-// only ever seeing the generic "Generation timed out" UI message forever.
+// wedged worker is detected and replaced here first.
 const WORKER_CALL_TIMEOUT_MS = 25_000
 
-let _worker = null
-let _pdfApi = null
+// The shared instance: { worker, api } or null.
+let current = null
 
-function destroyWorker() {
-  if (_worker) {
-    try { _worker.terminate() } catch (_) { /* already dead — fine */ }
-  }
-  _worker = null
-  _pdfApi = null
+/**
+ * Terminate a specific worker instance and clear it as the shared one only if
+ * it is still the current one. Calling this with a stale instance is a no-op
+ * for the replacement, which is the point of scoping it.
+ */
+function destroyInstance(instance) {
+  if (!instance) return
+  try { instance.worker.terminate() } catch (_) { /* already dead — fine */ }
+  if (current === instance) current = null
 }
 
-function getApi() {
-  if (_pdfApi) return _pdfApi
+function getInstance() {
+  if (current) return current
 
   const worker = new PdfGenWorker()
+  const instance = { worker, api: Comlink.wrap(worker) }
 
-  // Proactive recovery: if the worker throws an uncaught error or sends a
-  // message that can't be deserialised, treat it as dead immediately so the
-  // next call gets a brand-new instance instead of reusing this one.
+  // Proactive recovery: an uncaught worker error or an undeserialisable
+  // message means this instance is no longer trustworthy.
   const onFailure = (event) => {
     console.error('[pdfWorkerClient] PDF worker crashed — it will be recreated on the next request', event)
-    destroyWorker()
+    destroyInstance(instance)
   }
   worker.addEventListener('error', onFailure)
   worker.addEventListener('messageerror', onFailure)
 
-  _worker = worker
-  _pdfApi = Comlink.wrap(worker)
-  return _pdfApi
+  current = instance
+  return instance
 }
 
 /**
@@ -100,7 +78,7 @@ function getApi() {
  */
 export function createWorkerGenerator(generatorKey, exportName) {
   return async (d, photos) => {
-    const api = getApi()
+    const instance = getInstance()
 
     let timeoutId = null
     const timeout = new Promise((_, reject) => {
@@ -109,19 +87,18 @@ export function createWorkerGenerator(generatorKey, exportName) {
 
     try {
       const result = await Promise.race([
-        api.generate(generatorKey, exportName, d, photos),
+        instance.api.generate(generatorKey, exportName, d, photos),
         timeout,
       ])
       clearTimeout(timeoutId)
       return result
     } catch (err) {
       clearTimeout(timeoutId)
-      // Whether this was a genuine rejection or our own timeout firing
-      // because the worker silently died, the worker can no longer be
-      // trusted — tear it down so the NEXT attempt (e.g. the tech tapping
-      // "Retry") starts from a clean worker rather than hanging again.
+      // Whether this was a real rejection or our timeout firing because the
+      // worker went silent, this instance can't be trusted: replace it so
+      // the next attempt (e.g. the tech tapping Retry) starts clean.
       console.error('[pdfWorkerClient] PDF generation failed or hung — recreating worker', err)
-      destroyWorker()
+      destroyInstance(instance)
       throw err
     }
   }

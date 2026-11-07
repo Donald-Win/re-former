@@ -43,6 +43,25 @@ const emptyRow = () => ({
   drawingRef: '',
 })
 
+// Toggle for an optional section. Defined at module level so it keeps its
+// identity between renders (a component declared inside the render function
+// remounts on every render).
+function AppliesToggle({ applies, label, onToggle }) {
+  return (
+    <button type="button" onClick={onToggle} style={{
+      width: '100%', padding: '12px 16px', borderRadius: 8, marginBottom: 16,
+      border: `2px solid ${applies ? ACCENT : '#ddd'}`,
+      background: applies ? ACCENT : '#fff',
+      color: applies ? '#fff' : '#555',
+      fontFamily: 'inherit', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+      textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10,
+    }}>
+      <span style={{ fontSize: 18 }}>{applies ? '✓' : '○'}</span>
+      {label}
+    </button>
+  )
+}
+
 function ZoneSubWizard({ onClose }) {
   const [step, setStep]     = useState(0)
   const [d, setD]           = useState(() => getBaseFormState({
@@ -102,20 +121,6 @@ function ZoneSubWizard({ onClose }) {
   const { set, handleDevFill } = useWizardSetup(d, setD, step, '360S014EF')
   const { clearDraft: clearFormDraft } = useDraft('360S014EF', d, step, photos)
   const crashRecovery = useCrashRecovery({ formKey: '360S014EF', setD, setStep, setPhotos, maxStep: EF_STEPS.length - 2 })
-
-  const AppliesToggle = ({ applies, label, onToggle }) => (
-    <button type="button" onClick={onToggle} style={{
-      width: '100%', padding: '12px 16px', borderRadius: 8, marginBottom: 16,
-      border: `2px solid ${applies ? ACCENT : '#ddd'}`,
-      background: applies ? ACCENT : '#fff',
-      color: applies ? '#fff' : '#555',
-      fontFamily: 'inherit', fontSize: 14, fontWeight: 700, cursor: 'pointer',
-      textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10,
-    }}>
-      <span style={{ fontSize: 18 }}>{applies ? '✓' : '○'}</span>
-      {label}
-    </button>
-  )
 
   const renderCurrentStep = () => {
     switch (step) {
@@ -283,3 +288,4 @@ function ZoneSubWizard({ onClose }) {
 }
 
 export default ZoneSubWizard
+

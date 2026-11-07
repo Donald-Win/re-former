@@ -5,7 +5,7 @@
  * These are loaded silently into every wizard and written to the PDF
  * without the user being asked each time.
  */
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { CheckCircle2, User, Building2, PenLine, Trash2, FileText, Hash, Settings, Briefcase, List } from 'lucide-react'
 import { getUserPrefs, saveUserPref } from './userPrefs'
 import { SignaturePad } from './SignaturePad'
@@ -20,6 +20,9 @@ export function UserSettings({ onClose }) {
   const [signed,     setSigned]     = useState('')
   const [defaultView, setDefaultView] = useState('workType')
   const [saved,      setSaved]      = useState(false)
+  const savedTimerRef = useRef(null)
+
+  useEffect(() => () => { if (savedTimerRef.current) clearTimeout(savedTimerRef.current) }, [])
 
   // Load existing prefs on mount
   useEffect(() => {
@@ -40,7 +43,8 @@ export function UserSettings({ onClose }) {
     saveUserPref('signed',      signed)
     saveUserPref('defaultView', defaultView)
     setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
+    savedTimerRef.current = setTimeout(() => setSaved(false), 2000)
   }
 
   const handleClearAll = () => {
@@ -293,4 +297,5 @@ export function UserSettings({ onClose }) {
     </div>
   )
 }
+
 
