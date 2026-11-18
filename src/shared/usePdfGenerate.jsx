@@ -8,60 +8,38 @@
  * Generator argument — two supported patterns
  * ────────────────────────────────────────────
  * (a) Direct function — called immediately as `fn(d, photos)`. This covers
- *     both a plain synchronous/async generator function AND the worker-backed
- *     wrapper every wizard now uses by default (see below):
- *       import { createWorkerGenerator } from '../shared/pdfWorkerClient'
- *       const generatePolePdf = createWorkerGenerator('PolePdfGenerator', 'generatePolePdf')
- *       usePdfGenerate(generatePolePdf)
+ *     the worker-backed wrapper every wizard uses (see pdfWorkerClient.js).
+ * (b) Zero-argument thunk returning a Promise that resolves to the generator.
+ *     Detected by `.length === 0`.
  *
- * (b) Zero-argument thunk returning a Promise that resolves to the generator
- *     function (kept for any generator that still wants plain main-thread
- *     code-splitting without the worker):
- *       const loadEEGenerator = () =>
- *         import('./generators/ElecEquipPdfGenerator').then(m => m.generateEEPdf)
- *       usePdfGenerate(loadEEGenerator)
+ * Error reporting
+ * ───────────────
+ * pdfError is an object { stage, text }. `stage` says where the failure
+ * happened ('timeout', 'load-generator', 'worker-call', 'worker-crash', …)
+ * and `text` is the exception, with name, message and codes. Both are shown
+ * on the preview screen and written to the error log.
  *
- * Detection: a thunk is distinguished from a direct generator by `.length === 0`
- * (zero declared parameters). Every worker-backed generator created via
- * createWorkerGenerator() declares 2 parameters (d, photos), so it is always
- * treated as pattern (a) and called directly — no change was needed here
- * when wizards were switched over to the worker.
- *
- * Web Worker — off-main-thread generation (v2.19.0: now the default path)
- * ──────────────────────────────────────────────────────────────────────
- * Every wizard generates its PDF via src/workers/pdfGen.worker.js through
- * src/shared/pdfWorkerClient.js's createWorkerGenerator(). appendPhotosToPdf
- * already supports running inside a worker (it falls back to
- * OffscreenCanvas/createImageBitmap when `document` is undefined), so the
- * full generation pipeline — fetch template, draw fields, embed photos — is
- * DOM-free and runs entirely off the main thread. pdfWorkerClient.js also
- * detects a crashed/wedged worker and transparently recreates it so a single
- * failure doesn't permanently break generation for the rest of the session.
- *
- * Race-condition guard
- * ────────────────────
- * genIdRef increments on every triggerGenerate call and on unmount. A
- * resolved Promise that finds its id stale discards its result silently.
- *
- * Generation timeout
- * ──────────────────
- * A 30-second timeout races against the generator. On expiry the user sees
- * a distinct "timed out" message instead of an infinite spinner. The
- * timeout's own timer is cleared as soon as the race settles either way
- * (success or failure) — previously it was left running to completion even
- * after the generator had already resolved, which was harmless but left a
- * dangling timer per generation for no reason.
+ * Race-condition guard: genIdRef increments on every trigger and on unmount,
+ * so a late result from an older run is discarded.
  */
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { PdfCanvasPreview } from './PdfCanvasPreview'
+import { CopyDiagnosticsButton } from './CopyDiagnosticsButton'
+import { reportError, describeError, withStage } from './errorLog'
 
 const GENERATION_TIMEOUT_MS = 30_000
+
+const PRE = {
+  whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 11, lineHeight: 1.4,
+  background: 'rgba(0,0,0,0.35)', padding: 8, borderRadius: 6, color: '#f9fafb',
+  margin: 0, maxWidth: 480,
+}
 
 export function usePdfGenerate(generatorFn) {
   const [pdfBytes,      setPdfBytes]      = useState(null)
   const [pdfBlobUrl,    setPdfBlobUrl]    = useState(null)
   const [pdfGenerating, setPdfGenerating] = useState(false)
-  const [pdfError,      setPdfError]      = useState(null)
+  const [pdfError,      setPdfError]      = useState(null)   // { stage, text } | null
 
   const genIdRef   = useRef(0)
   const blobUrlRef = useRef(null)
@@ -94,18 +72,20 @@ export function usePdfGenerate(generatorFn) {
     let timeoutId = null
     const timeoutPromise = new Promise((_, reject) => {
       timeoutId = setTimeout(
-        () => reject(new Error('GENERATION_TIMEOUT')),
+        () => reject(withStage(new Error('GENERATION_TIMEOUT'), 'timeout')),
         GENERATION_TIMEOUT_MS,
       )
     })
 
     // ── Generator resolution ──────────────────────────────────────────────────
-    // A thunk (length === 0) is a lazy import factory: () => Promise<generatorFn>.
-    // A direct generator (length >= 1) is called immediately with (d, photos).
     const runGeneration = async () => {
       let fn = generatorFn
       if (typeof generatorFn === 'function' && generatorFn.length === 0) {
-        fn = await generatorFn()
+        try {
+          fn = await generatorFn()
+        } catch (err) {
+          throw withStage(err, 'load-generator')
+        }
       }
       return fn(d, photos)
     }
@@ -116,6 +96,14 @@ export function usePdfGenerate(generatorFn) {
         if (myGenId !== genIdRef.current) return
 
         const bytes = result instanceof Uint8Array ? result : new Uint8Array(result)
+        if (bytes.byteLength === 0) {
+          const err = withStage(new Error('the generator returned an empty file (0 bytes)'), 'empty-output')
+          reportError('pdf-generate', err)
+          setPdfError({ stage: 'empty-output', text: describeError(err) })
+          setPdfGenerating(false)
+          return
+        }
+
         const blob  = new Blob([bytes], { type: 'application/pdf' })
         const url   = URL.createObjectURL(blob)
         blobUrlRef.current = url
@@ -128,14 +116,14 @@ export function usePdfGenerate(generatorFn) {
         clearTimeout(timeoutId)
         if (myGenId !== genIdRef.current) return
 
-        console.error('PDF generation failed:', err)
+        const stage = err?.stage ?? 'generate'
+        const isTimeout = err?.message === 'GENERATION_TIMEOUT'
+        const text = isTimeout
+          ? `The PDF did not finish within ${GENERATION_TIMEOUT_MS / 1000} seconds.`
+          : describeError(err)
 
-        const isTimeout = err.message === 'GENERATION_TIMEOUT'
-        setPdfError(
-          isTimeout
-            ? 'Generation timed out — check your connection and try again.'
-            : 'Could not generate PDF — please try again.',
-        )
+        reportError('pdf-generate', err, { stage, photos: photos?.length ?? 0 })
+        setPdfError({ stage, text })
         setPdfGenerating(false)
       })
   }, [generatorFn])
@@ -169,21 +157,25 @@ export function usePdfGenerate(generatorFn) {
       <div style={{
         display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
-        height: '100%',
+        height: '100%', padding: '0 16px', gap: 10,
       }}>
-        <div style={{ fontSize: 14, color: '#f87171', marginBottom: 12, textAlign: 'center', padding: '0 24px' }}>
-          {pdfError}
+        <div style={{ fontSize: 15, color: '#f87171', fontWeight: 700 }}>
+          Could not generate the PDF
         </div>
-        <button
-          onClick={onRetry}
-          style={{
-            padding: '10px 20px', borderRadius: 8, border: 'none',
-            background: accent, color: '#fff',
-            fontFamily: 'inherit', fontSize: 14, fontWeight: 700, cursor: 'pointer',
-          }}
-        >
-          Retry
-        </button>
+        <pre style={PRE}>{`Stage: ${pdfError.stage}\n${pdfError.text}`}</pre>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+          <button
+            onClick={onRetry}
+            style={{
+              padding: '10px 20px', borderRadius: 8, border: 'none',
+              background: accent, color: '#fff',
+              fontFamily: 'inherit', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+            }}
+          >
+            Retry
+          </button>
+          <CopyDiagnosticsButton accent={accent} />
+        </div>
       </div>
     )
     if (pdfBytes) return <PdfCanvasPreview pdfBytes={pdfBytes} />

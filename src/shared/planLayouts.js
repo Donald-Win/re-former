@@ -48,14 +48,25 @@ export const LV_CONNECTION_LAYOUT = Object.freeze({
   north: Object.freeze({ cx: 36, cy: 37, r: 27 }),
 })
 
+// 360S014EK — Streetlight Alteration/Installation Record, page 1 "Dimensioned PLAN" grid.
+// Measured from the blank form: the grid's line extents are x 39.85–552.0 and
+// y 440.15–726.2 (top-origin pt). The printed north circle is centred at
+// (71.10, 481.50) with radius 22.80, i.e. (31.25, 41.35) relative to the box.
+export const STREETLIGHT_LAYOUT = Object.freeze({
+  box: Object.freeze({ x: 39.85, y: 440.15, w: 512.15, h: 286.05 }),
+  north: Object.freeze({ cx: 31.25, cy: 41.35, r: 22.8 }),
+})
+
 const BY_FORM = {
   '360S014EJ': EARTH_LAYOUT,
   '360S014EC': POLE_LAYOUT,
   '360S014EB': EB_LAYOUT,
   '360S014EA': LV_CONNECTION_LAYOUT,
+  '360S014EK': STREETLIGHT_LAYOUT,
 }
 
 /** The layout for a form code. Unknown codes get the Earth layout. */
 export function layoutFor(formKey) {
   return BY_FORM[formKey] || EARTH_LAYOUT
 }
+

@@ -13,14 +13,18 @@ import ZoneSubWizard from './wizards/ZoneSubWizard'
 import HVInspectionWizard from './wizards/HVInspectionWizard'
 import DistributionTransformerWizard from './wizards/DistributionTransformerWizard'
 import DistPanelWizard from './wizards/DistPanelWizard'
+import StreetlightWizard from './wizards/StreetlightWizard'
 import { AuthGate } from './auth/AuthGate'
 import { ensureFreshAccess } from './auth/auth'
 import { UserSettings } from './shared/UserSettings'
 import { getUserPrefs } from './shared/userPrefs'
 import { CHANGELOGS } from './changelog'
 import { PdfCanvasPreview } from './shared/PdfCanvasPreview'
+import { setAppVersion, reportError, describeError } from './shared/errorLog'
+import { CopyDiagnosticsButton } from './shared/CopyDiagnosticsButton'
 
-const APP_VERSION = '2.32.1'
+const APP_VERSION = '2.34.0'
+setAppVersion(APP_VERSION)
 
 // ── Wizard config (module-level — never recreated) ────────────────────────────
 const WIZARD_CONFIG = {
@@ -100,6 +104,13 @@ const WIZARD_CONFIG = {
     fileName:  '360S014EF.pdf',
     accent:    '#4f46e5',
     Component: ZoneSubWizard,
+  },
+  '360S014EK': {
+    label:     '360S014EK – As-built Streetlight Alteration/Installation Record',
+    pdfName:   'As-built Streetlight Alteration/Installation Record',
+    fileName:  '360S014EK.pdf',
+    accent:    '#4f46e5',
+    Component: StreetlightWizard,
   },
 }
 
@@ -218,6 +229,12 @@ const workTypeMapping = {
   'Remote Terminal Unit (RTU)':        { forms: ['360S014EW'], commissioningCerts: [] },
 }
 
+// Shared style for the diagnostic text in the form viewer.
+const PRE_STYLE = {
+  whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 12, lineHeight: 1.5,
+  background: 'rgba(0,0,0,0.35)', color: '#f9fafb', padding: 10, borderRadius: 8, margin: '8px 0',
+}
+
 // ── WizardChoiceModal ─────────────────────────────────────────────────────────
 function WizardChoiceModal({ formId, onFillOut, onViewPdf, onClose }) {
   const cfg = WIZARD_CONFIG[formId]
@@ -327,13 +344,10 @@ const AsBuiltFormSelector = () => {
   const [formSearchTerm, setFormSearchTerm] = useState('')
 
   // ── Browse All Forms — collapsible categories ─────────────────────────────
-  // All four categories (Pre-Work, Test & Verification, As-Built, Commissioning)
-  // start collapsed. While the user is actively searching (formSearchTerm
-  // non-empty), categories auto-expand so matching results aren't hidden
-  // behind a closed accordion. The bulk expand/collapse only fires once, on
-  // the empty↔non-empty transition (tracked via wasSearchingRef), so manually
-  // collapsing a category mid-search isn't immediately re-opened by the next
-  // keystroke.
+  // All four categories start collapsed. While the user is actively searching
+  // (formSearchTerm non-empty), categories auto-expand so matching results
+  // aren't hidden behind a closed accordion. The bulk expand/collapse only
+  // fires once, on the empty↔non-empty transition (tracked via wasSearchingRef).
   const [expandedSections, setExpandedSections] = useState({
     tailgate: false, testSheets: false, asBuilt: false, commissioning: false,
   })
@@ -363,12 +377,15 @@ const AsBuiltFormSelector = () => {
   }, [])
 
   // ── PDF viewer state — grouped into one object ────────────────────────────
+  // error: null, or { stage, text, url, online } when the blank form could
+  // not be loaded. Shown on screen instead of silently opening a new tab.
   const [pdfViewer, setPdfViewer] = useState({
     open:    false,
     url:     '',
     name:    '',
     bytes:   null,
     blobUrl: null,
+    error:   null,
   })
 
   const [activeWizard, setActiveWizard] = useState(null)
@@ -408,6 +425,8 @@ const AsBuiltFormSelector = () => {
           }
         })
       })
+    }).catch(err => {
+      reportError('service-worker', err, { step: 'getRegistration' })
     })
   }, [])
 
@@ -426,20 +445,11 @@ const AsBuiltFormSelector = () => {
 
   // ── Changelog ─────────────────────────────────────────────────────────────
   // First-load detection (v2.21.0)
-  // ─────────────────────────────────
+  // ───────────────────────────────────
   // localStorage.getItem() returns null both for a genuinely fresh install
-  // AND for an existing device that just had its storage cleared (browser
-  // history/site-data clear, reinstalling as a PWA, etc.) — the two are
-  // indistinguishable from here. Previously, either case fell through to
-  // `seen = []`, which meant every entry in CHANGELOGS (currently back to
-  // v2.8.0) was treated as "unseen" and queued — dumping the entire history
-  // as a wall of stacked "What's New" modals on a single visit.
-  //
-  // The correct behaviour is the same for both cases: don't replay history
-  // that's meaningless to a new install and unhelpful to a returning one —
-  // seed the seen-list with every version that exists RIGHT NOW (so nothing
-  // shows this run) and let any update pushed after this point show normally
-  // going forward, exactly as before.
+  // AND for an existing device that just had its storage cleared. The two
+  // are indistinguishable from here, so a null value seeds the seen-list with
+  // every version that exists now and nothing is queued as "unseen".
   useEffect(() => {
     try {
       const raw = localStorage.getItem('re-former-changelog-seen')
@@ -461,7 +471,10 @@ const AsBuiltFormSelector = () => {
       }
       const unseen = CHANGELOGS.filter(b => !seen.includes(b.version))
       if (unseen.length > 0) { setChangelogQueue(unseen); setChangelogIdx(0) }
-    } catch { setChangelogQueue([]) }
+    } catch (err) {
+      reportError('changelog', err, { step: 'read seen list' })
+      setChangelogQueue([])
+    }
   }, [])
 
   const dismissChangelog = () => {
@@ -479,7 +492,9 @@ const AsBuiltFormSelector = () => {
       if (!seen.includes(current.version)) {
         localStorage.setItem('re-former-changelog-seen', JSON.stringify([...seen, current.version]))
       }
-    } catch {}
+    } catch (err) {
+      reportError('changelog', err, { step: 'save seen list' })
+    }
     if (changelogIdx + 1 < changelogQueue.length) {
       setChangelogIdx(i => i + 1)
     } else {
@@ -489,9 +504,8 @@ const AsBuiltFormSelector = () => {
   }
 
   // Marks every batch currently queued as seen in one go and closes the
-  // modal immediately — an escape hatch for the legitimate case of several
-  // real updates genuinely piling up (e.g. the app wasn't opened for a
-  // few months), so a tech isn't forced to tap "Next" through each one.
+  // modal immediately — an escape hatch for the case where several real
+  // updates have piled up.
   const dismissAllChangelogs = () => {
     try {
       const raw = localStorage.getItem('re-former-changelog-seen')
@@ -505,17 +519,23 @@ const AsBuiltFormSelector = () => {
       const queuedVersions = changelogQueue.map(b => b.version)
       const merged = Array.from(new Set([...seen, ...queuedVersions]))
       localStorage.setItem('re-former-changelog-seen', JSON.stringify(merged))
-    } catch {}
+    } catch (err) {
+      reportError('changelog', err, { step: 'skip all' })
+    }
     setChangelogQueue([])
     setChangelogIdx(0)
   }
 
   const handleInstall = useCallback(async () => {
     if (!installPrompt) return
-    installPrompt.prompt()
-    const { outcome } = await installPrompt.userChoice
-    if (outcome === 'accepted') setInstallPrompt(null)
-    else setInstallDismissed(true)
+    try {
+      installPrompt.prompt()
+      const { outcome } = await installPrompt.userChoice
+      if (outcome === 'accepted') setInstallPrompt(null)
+      else setInstallDismissed(true)
+    } catch (err) {
+      reportError('install', err, { step: 'prompt' })
+    }
   }, [installPrompt])
 
   // ── PDF viewer handlers ───────────────────────────────────────────────────
@@ -535,16 +555,38 @@ const AsBuiltFormSelector = () => {
 
     setPdfViewer(prev => {
       if (prev.blobUrl) URL.revokeObjectURL(prev.blobUrl)
-      return { open: true, url, name: displayName, bytes: null, blobUrl: null }
+      return { open: true, url, name: displayName, bytes: null, blobUrl: null, error: null }
     })
+
+    // Records the failure and shows it in the viewer. Nothing opens
+    // automatically: the tech can read the reason, then choose "Open in new tab".
+    const fail = (stage, err) => {
+      if (requestId !== fetchRequestIdRef.current) return
+      const online = navigator.onLine
+      reportError('form-viewer', err, { stage, url, online })
+      setPdfViewer(prev => {
+        if (prev.blobUrl) URL.revokeObjectURL(prev.blobUrl)
+        return {
+          ...prev,
+          bytes: null,
+          blobUrl: null,
+          error: { stage, text: describeError(err), url, online },
+        }
+      })
+    }
 
     fetch(url)
       .then(r => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        if (!r.ok) {
+          const err = new Error(`the server answered HTTP ${r.status}${r.statusText ? ' ' + r.statusText : ''}`)
+          err.status = r.status
+          throw err
+        }
         return r.arrayBuffer()
       })
       .then(buf => {
         if (requestId !== fetchRequestIdRef.current) return
+        if (buf.byteLength === 0) throw new Error('the file arrived but is empty (0 bytes)')
         const bytes   = new Uint8Array(buf)
         const blob    = new Blob([bytes], { type: 'application/pdf' })
         const blobUrl = URL.createObjectURL(blob)
@@ -556,20 +598,15 @@ const AsBuiltFormSelector = () => {
           return { ...prev, bytes, blobUrl }
         })
       })
-      .catch(() => {
-        if (requestId !== fetchRequestIdRef.current) return
-        setPdfViewer(prev => {
-          if (prev.blobUrl) URL.revokeObjectURL(prev.blobUrl)
-          return { open: false, url: '', name: '', bytes: null, blobUrl: null }
-        })
-        window.open(url, '_blank', 'noopener,noreferrer')
+      .catch(err => {
+        fail(err?.status !== undefined ? 'fetch-status' : 'fetch', err)
       })
   }, [])
 
   const handleClosePdf = useCallback(() => {
     setPdfViewer(prev => {
       if (prev.blobUrl) URL.revokeObjectURL(prev.blobUrl)
-      return { open: false, url: '', name: '', bytes: null, blobUrl: null }
+      return { open: false, url: '', name: '', bytes: null, blobUrl: null, error: null }
     })
   }, [])
 
@@ -581,10 +618,17 @@ const AsBuiltFormSelector = () => {
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({ files: [file] })
       } else if (pdfViewer.blobUrl) {
-        window.open(pdfViewer.blobUrl, '_blank')
+        const opened = window.open(pdfViewer.blobUrl, '_blank')
+        if (!opened) {
+          reportError('share', new Error('the blank form could not be opened in a new tab (pop-up blocked, or running from the home screen)'), {
+            source: 'form-viewer', name: pdfViewer.name,
+          })
+        }
       }
     } catch (err) {
-      if (err.name !== 'AbortError') console.error('Share failed:', err)
+      if (err.name !== 'AbortError') {
+        reportError('share', err, { source: 'form-viewer', name: pdfViewer.name, canShare: !!navigator.canShare })
+      }
     }
   }
 
@@ -1006,7 +1050,7 @@ const AsBuiltFormSelector = () => {
                 }}
               >
                 <Share2 size={16} color="#fff" />
-                {pdfViewer.blobUrl ? 'Print / Save / Share' : 'Loading…'}
+                {pdfViewer.blobUrl ? 'Print / Save / Share' : pdfViewer.error ? 'Unavailable' : 'Loading…'}
               </button>
               <button onClick={handleClosePdf} style={{
                 padding: 8, border: 'none', background: 'none',
@@ -1018,7 +1062,45 @@ const AsBuiltFormSelector = () => {
             </div>
           </div>
           <div style={{ flex: 1, background: '#111827', overflowY: 'auto', padding: 16 }}>
-            {pdfViewer.bytes ? (
+            {pdfViewer.error ? (
+              <div role="alert" style={{ color: '#fff', maxWidth: 520, margin: '24px auto', fontSize: 14 }}>
+                <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 8, color: '#fca5a5' }}>
+                  This form could not be opened
+                </div>
+                <div style={{ color: '#d1d5db', marginBottom: 6, lineHeight: 1.5 }}>
+                  Try again, or use "Open in new tab" to view it another way. If it keeps happening, send the details below.
+                </div>
+                <pre style={PRE_STYLE}>{[
+                  `Stage: ${pdfViewer.error.stage}`,
+                  `Reason: ${pdfViewer.error.text}`,
+                  `File: ${pdfViewer.error.url}`,
+                  `Online: ${pdfViewer.error.online ? 'yes' : 'no'}`,
+                ].join('\n')}</pre>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+                  <button
+                    onClick={() => handleFormClick(pdfViewer.url, pdfViewer.name)}
+                    style={{
+                      padding: '9px 14px', borderRadius: 8, border: '2px solid #4f46e5',
+                      background: '#fff', color: '#4f46e5', fontFamily: 'inherit',
+                      fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                    }}
+                  >
+                    Try again
+                  </button>
+                  <button
+                    onClick={() => window.open(pdfViewer.url, '_blank', 'noopener,noreferrer')}
+                    style={{
+                      padding: '9px 14px', borderRadius: 8, border: 'none',
+                      background: '#4f46e5', color: '#fff', fontFamily: 'inherit',
+                      fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                    }}
+                  >
+                    Open in new tab
+                  </button>
+                  <CopyDiagnosticsButton accent="#4f46e5" />
+                </div>
+              </div>
+            ) : pdfViewer.bytes ? (
               <PdfCanvasPreview pdfBytes={pdfViewer.bytes} />
             ) : (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
@@ -1197,15 +1279,16 @@ const AsBuiltFormSelector = () => {
               onClick={() => {
                 // Reload-on-update is handled by the single persistent
                 // 'controllerchange' listener registered once in main.jsx.
-                // A second listener used to be added right here on every
-                // click, which raced with that one and reloaded the page
-                // twice. Posting SKIP_WAITING is all this button needs to do.
+                // Posting SKIP_WAITING is all this button needs to do.
                 navigator.serviceWorker.getRegistration().then(reg => {
                   if (reg && reg.waiting) {
                     reg.waiting.postMessage('SKIP_WAITING')
                   } else {
                     window.location.reload()
                   }
+                }).catch(err => {
+                  reportError('service-worker', err, { step: 'update now' })
+                  window.location.reload()
                 })
               }}
               style={{
@@ -1301,5 +1384,3 @@ function App() {
 }
 
 export default App
-
-
