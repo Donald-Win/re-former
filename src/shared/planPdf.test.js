@@ -91,3 +91,21 @@ describe('drawPlan geometry', () => {
     expect(Math.max(...ys) <= top + 0.01).toBe(true)
   })
 })
+
+
+describe('drawn circles and dots print at the size shown on screen', () => {
+  it('a circle of diameter w is drawn with size w (pdf-lib size is the diameter)', () => {
+    const page = fakePage()
+    const plan = addPoint(emptyPlan(), 'circle', 100, 100, '', 'c', { w: 20 }, POLE_LAYOUT).plan
+    drawPlan({ page, font, plan, layout: POLE_LAYOUT, pageHeight: 842 })
+    const c = page.calls.find(c => c.name === 'circle')
+    expect(c.args.size).toBe(20)
+  })
+
+  it('a dot is drawn at its fixed diameter (7.5)', () => {
+    const page = fakePage()
+    const plan = addPoint(emptyPlan(), 'dot', 100, 100, '', 'd', {}, POLE_LAYOUT).plan
+    drawPlan({ page, font, plan, layout: POLE_LAYOUT, pageHeight: 842 })
+    expect(page.calls.find(c => c.name === 'circle').args.size).toBe(7.5)
+  })
+})

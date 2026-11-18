@@ -30,6 +30,13 @@
  */
 import { useState, useCallback } from 'react'
 
+// Fields that My Details fills in automatically on every form. They don't count
+// as progress when deciding whether a draft load would overwrite real work.
+const PREFILLED_FIELDS = new Set([
+  'contractor', 'namePrint', 'signed', 'dateWorkCompleted', 'isnId',
+  'wtlName', 'wtlSigned', 'wtlCertNo', 'fsSigned',
+])
+
 export function useDraftPicker({
   setD,
   setPhotos,
@@ -56,11 +63,23 @@ export function useDraftPicker({
   // destructure here that looked like it was stripping something out but
   // never actually matched anything. Spreading draft.data directly is
   // equivalent and clearer.
+  // Loading a draft replaces the photos with the draft's own set (even when
+  // that set is empty), as the 2.18.1 changelog promises. If the form already
+  // has progress, ask first so it isn't overwritten by accident.
   const handleLoad = useCallback((draft) => {
+    // Progress = a later step, any photo, or anything typed on the job details
+    // (step 0). Fields pre-filled from My Details don't count.
+    const hasProgress = step > 0 || (photos && photos.length > 0) ||
+      Object.entries(d || {}).some(([k, v]) =>
+        !PREFILLED_FIELDS.has(k) && typeof v === 'string' && v.trim() !== '')
+    if (hasProgress && !window.confirm(
+      'Replace what is on this form with this saved draft?\n\nAnything not saved in the draft will be lost.'
+    )) return false
     setD(prev => ({ ...prev, ...(draft.data || {}) }))
-    if (Array.isArray(draft.photos) && draft.photos.length > 0) setPhotos(draft.photos)
+    setPhotos(Array.isArray(draft.photos) ? draft.photos : [])
     setStep(draft.step || 0)
-  }, [setD, setPhotos, setStep])
+    return true
+  }, [setD, setPhotos, setStep, step, photos, d])
 
   // Pre-assembled props — spread directly onto <DraftPicker>.
   // d, step, photos are current render values so DraftPicker always sees
@@ -80,3 +99,4 @@ export function useDraftPicker({
 
   return { draftPickerProps, openSave, openLoad }
 }
+

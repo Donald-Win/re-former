@@ -13,6 +13,77 @@
 
 export const CHANGELOGS = [
   {
+    version: '2.34.0',
+    changes: [
+      {
+        heading: 'Clearer messages when something goes wrong',
+        detail: "When a form, preview, PDF or share fails, the message now says which step failed and why, instead of a general 'could not' message. Please include that message if you ask for help.",
+      },
+      {
+        heading: 'Blank forms that won\'t open now explain why',
+        detail: "If a blank form can't be loaded, the viewer shows the reason, with Try again and Open in new tab buttons. The app no longer opens a new tab by itself.",
+      },
+      {
+        heading: 'Copy diagnostics',
+        detail: "On any error screen there is now a Copy diagnostics button. It copies a short report with the app version, the device and the recent errors. If copying isn't possible, the report appears in a box you can select and copy by hand. No form details, names or signatures are included.",
+      },
+      {
+        heading: 'Screen errors no longer leave a blank screen',
+        detail: "If the app hits an unexpected error while showing a screen, it now shows a message with a Reload app button. Your saved drafts and My Details are kept.",
+      },
+    ],
+  },
+  {
+    version: '2.33.0',
+    changes: [
+      {
+        heading: 'New form: As-built Streetlight Alteration/Installation Record',
+        detail: "360S014EK can now be filled out in the app. Tap it in Browse All Forms (or under Streetlights) and choose \"Fill Out Form\". It covers the owner and pole details, the conductor, the lamp removed and the lamp installed (date, wattage and type), the Dusk/Dawn setting, and a dimensioned plan drawn on screen. Photos can be attached like on the other forms.",
+      },
+    ],
+  },
+  {
+    version: '2.32.1',
+    changes: [
+      {
+        heading: 'Printed forms only show what was filled in for the visible section',
+        detail: "If you filled in a section and then changed your answer (for example, a pole's activity, or an underground main changed to overhead), the hidden section's details no longer print on the form. This applies to the Pole Record, Electrical Equipment Record and Electrical Distribution Record.",
+      },
+      {
+        heading: 'Panel layout: changing a fuse carrier keeps the row details',
+        detail: "Tapping a carrier on the panel grid no longer deletes the details typed into that row. Hidden rows keep their details and print again if the carrier is selected later.",
+      },
+      {
+        heading: 'Loading a draft',
+        detail: "Loading a saved draft now replaces the photos with the draft's own photos, as it always should. If the form already has progress you're asked to confirm before it's replaced.",
+      },
+      {
+        heading: 'Sharing a PDF',
+        detail: "The draft is only cleared once the PDF has actually been shared or opened for printing, so a failed share no longer throws away your work.",
+      },
+      {
+        heading: 'Pole Record — work description',
+        detail: "Long lines in the work description now wrap onto the next line, so nothing runs off the edge of the form.",
+      },
+      {
+        heading: 'Drawn plans print at the right size',
+        detail: "Circles and dots on a drawn plan now print at the size they show on screen.",
+      },
+      {
+        heading: 'Photos that can\'t be read are reported',
+        detail: "If a photo can't be read it's now flagged on screen, instead of quietly missing from the list.",
+      },
+      {
+        heading: 'GPS height is labelled accurately',
+        detail: "The height filled in from GPS is a height above the reference surface, not height above sea level. The button now says so.",
+      },
+      {
+        heading: 'Background fixes',
+        detail: "Recovering from a stalled PDF no longer affects other work. The signature pad handles clearing and reloading a saved signature more reliably. Settings and the Zone Substation form have smaller internal fixes.",
+      },
+    ],
+  },
+  {
     version: '2.32.0',
     changes: [
       {
@@ -543,4 +614,3 @@ export const CHANGELOGS = [
     ],
   },
 ]
-

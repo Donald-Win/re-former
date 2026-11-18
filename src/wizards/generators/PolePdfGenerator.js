@@ -44,6 +44,17 @@ const getTemplateUrl = () =>
 // FIELDS
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ── Visibility rules. Each one matches the wizard step that shows the field, so
+// a value entered for a section that is now hidden never prints.
+const when = (cond, fn) => d => (cond(d) ? fn(d) : '')
+const isNewPole      = d => d.poleActivity === 'New' || d.poleActivity === 'Replaced'
+const showNewPoleIds = d => ['New', 'Replaced', 'Label Replaced'].includes(d.poleActivity)
+const showRemoval    = d => d.poleActivity === 'Removed' || d.poleActivity === 'Replaced'
+const showGps        = d => isNewPole(d) && d.gpsRequired === 'Yes'
+const isDulhunty     = d => isNewPole(d) && d.poleCode === 'DULHUNTY'
+const isIup          = d => isNewPole(d) && d.poleCode === 'IUP'
+const isOtherCode    = d => isNewPole(d) && d.poleCode === 'OTHER'
+
 export const FIELDS = {
 
   // ── Page 1 ─────────────────────────────────────────────────────────────────
@@ -60,13 +71,13 @@ export const FIELDS = {
     ciwrNo:            { type: 'text', align: 'left', x: 451, y: 164, value: d => d.ciwrNo },
 
     // Pole IDs & GPS
-    newPoleId:          { type: 'text', align: 'center', x:  33, width: 170, y: 225, value: d => d.newPoleId },
+    newPoleId:          { type: 'text', align: 'center', x:  33, width: 170, y: 225, value: when(showNewPoleIds, d => d.newPoleId) },
     oldPoleId:          { type: 'text', align: 'center', x: 173, width: 170, y: 225, value: d => d.oldPoleId },
-    gpsNorth:           { type: 'text', align: 'left', x: 415, y: 220, value: d => d.gpsNorth },
-    gpsEast:            { type: 'text', align: 'left', x: 415, y: 234, value: d => d.gpsEast },
-    altitude:           { type: 'text', align: 'left', x: 415, y: 265, value: d => d.altitude },
-    manufacturerPoleId: { type: 'text', align: 'center', x:  33, width: 170, y: 273, value: d => d.manufacturerPoleId },
-    manufacturedDate:   { type: 'text', align: 'center', x: 173, width: 170, y: 273, value: d => d.manufacturedDate },
+    gpsNorth:           { type: 'text', align: 'left', x: 415, y: 220, value: when(showGps, d => d.gpsNorth) },
+    gpsEast:            { type: 'text', align: 'left', x: 415, y: 234, value: when(showGps, d => d.gpsEast) },
+    altitude:           { type: 'text', align: 'left', x: 415, y: 265, value: when(showGps, d => d.altitude) },
+    manufacturerPoleId: { type: 'text', align: 'center', x:  33, width: 170, y: 273, value: when(d => isNewPole(d) && !!d.poleCode && !d.poleCode.includes('Busck'), d => d.manufacturerPoleId) },
+    manufacturedDate:   { type: 'text', align: 'center', x: 173, width: 170, y: 273, value: when(isNewPole, d => d.manufacturedDate) },
 
     // Pole activity
     poleActivityNew:            { type: 'check', x: 143, y: 319, value: d => d.poleActivity === 'New' },
@@ -88,12 +99,12 @@ export const FIELDS = {
     poleLoadingTermination:  { type: 'check', x: 464, y: 348, value: d => d.poleLoading === 'Termination' },
 
     // GPS required
-    gpsRequiredYes: { type: 'check', x: 143, y: 362, value: d => d.gpsRequired === 'Yes' },
-    gpsRequiredNo:  { type: 'check', x: 218, y: 362, value: d => d.gpsRequired === 'No' },
+    gpsRequiredYes: { type: 'check', x: 143, y: 362, value: when(isNewPole, d => d.gpsRequired === 'Yes') },
+    gpsRequiredNo:  { type: 'check', x: 218, y: 362, value: when(isNewPole, d => d.gpsRequired === 'No') },
 
     // Pole condition
-    poleConditionNew:    { type: 'check', x: 143, y: 377, value: d => d.poleCondition === 'New' },
-    poleConditionPreUsed:{ type: 'check', x: 218, y: 377, value: d => d.poleCondition === 'Pre-Used' },
+    poleConditionNew:    { type: 'check', x: 143, y: 377, value: when(isNewPole, d => d.poleCondition === 'New') },
+    poleConditionPreUsed:{ type: 'check', x: 218, y: 377, value: when(isNewPole, d => d.poleCondition === 'Pre-Used') },
 
     // Ownership
     ownershipPowerco: { type: 'check', x: 143, y: 391, value: d => d.ownership === 'Powerco' },
@@ -107,47 +118,47 @@ export const FIELDS = {
     sharedUseOther:  { type: 'check', x: 294, y: 405, value: d => d.sharedUse === 'Other' },
     sharedUseOtherText: { type: 'text', align: 'left', x: 374, y: 406, value: d => (d.sharedUse === 'Other' ? d.sharedUseOther : '') },
 
-    reasonForRemoval: { type: 'text', align: 'left', x: 128, y: 420, value: d => d.reasonForRemoval },
+    reasonForRemoval: { type: 'text', align: 'left', x: 128, y: 420, value: when(showRemoval, d => d.reasonForRemoval) },
 
     // Pole code grid — 16 Busck/Goldpine codes, matched by name instead of index
-    poleCodeB95:                  { type: 'check', x:  45, y: 478, value: d => d.poleCode === 'B9.5 (Busck)' },
-    poleCodeB100:                 { type: 'check', x: 173, y: 478, value: d => d.poleCode === 'B10.0 (Busck)' },
-    poleCodeB105:                 { type: 'check', x: 295, y: 478, value: d => d.poleCode === 'B10.5 (Busck)' },
-    poleCodeB110:                 { type: 'check', x: 427, y: 478, value: d => d.poleCode === 'B11.0 (Busck)' },
-    poleCodeB124:                 { type: 'check', x:  45, y: 493, value: d => d.poleCode === 'B12.4 (Busck)' },
-    poleCodeB125:                 { type: 'check', x: 173, y: 493, value: d => d.poleCode === 'B12.5 (Busck)' },
-    poleCodeB1365:                { type: 'check', x: 295, y: 493, value: d => d.poleCode === 'B13.65 (Busck)' },
-    poleCodeB1485:                { type: 'check', x: 427, y: 493, value: d => d.poleCode === 'B14.85 (Busck)' },
-    poleCodeB155:                 { type: 'check', x:  45, y: 507, value: d => d.poleCode === 'B15.5 (Busck)' },
-    poleCodeB185:                 { type: 'check', x: 173, y: 507, value: d => d.poleCode === 'B18.5 (Busck)' },
-    poleCodeGoldpine9m9kN:        { type: 'check', x: 295, y: 507, value: d => d.poleCode === '9m (9kN) Goldpine' },
-    poleCodeGoldpine10m9kN:       { type: 'check', x: 427, y: 507, value: d => d.poleCode === '10m (9kN) Goldpine' },
-    poleCodeGoldpine10m12kN:      { type: 'check', x:  45, y: 521, value: d => d.poleCode === '10m (12kN) Goldpine' },
-    poleCodeGoldpine11m9kN:       { type: 'check', x: 173, y: 521, value: d => d.poleCode === '11m (9kN) Goldpine' },
-    poleCodeGoldpine11m12kN:      { type: 'check', x: 295, y: 521, value: d => d.poleCode === '11m (12kN) Goldpine' },
-    poleCodeGoldpine12m12kN:      { type: 'check', x: 427, y: 521, value: d => d.poleCode === '12m (12kN) Goldpine' },
+    poleCodeB95:                  { type: 'check', x:  45, y: 478, value: when(isNewPole, d => d.poleCode === 'B9.5 (Busck)') },
+    poleCodeB100:                 { type: 'check', x: 173, y: 478, value: when(isNewPole, d => d.poleCode === 'B10.0 (Busck)') },
+    poleCodeB105:                 { type: 'check', x: 295, y: 478, value: when(isNewPole, d => d.poleCode === 'B10.5 (Busck)') },
+    poleCodeB110:                 { type: 'check', x: 427, y: 478, value: when(isNewPole, d => d.poleCode === 'B11.0 (Busck)') },
+    poleCodeB124:                 { type: 'check', x:  45, y: 493, value: when(isNewPole, d => d.poleCode === 'B12.4 (Busck)') },
+    poleCodeB125:                 { type: 'check', x: 173, y: 493, value: when(isNewPole, d => d.poleCode === 'B12.5 (Busck)') },
+    poleCodeB1365:                { type: 'check', x: 295, y: 493, value: when(isNewPole, d => d.poleCode === 'B13.65 (Busck)') },
+    poleCodeB1485:                { type: 'check', x: 427, y: 493, value: when(isNewPole, d => d.poleCode === 'B14.85 (Busck)') },
+    poleCodeB155:                 { type: 'check', x:  45, y: 507, value: when(isNewPole, d => d.poleCode === 'B15.5 (Busck)') },
+    poleCodeB185:                 { type: 'check', x: 173, y: 507, value: when(isNewPole, d => d.poleCode === 'B18.5 (Busck)') },
+    poleCodeGoldpine9m9kN:        { type: 'check', x: 295, y: 507, value: when(isNewPole, d => d.poleCode === '9m (9kN) Goldpine') },
+    poleCodeGoldpine10m9kN:       { type: 'check', x: 427, y: 507, value: when(isNewPole, d => d.poleCode === '10m (9kN) Goldpine') },
+    poleCodeGoldpine10m12kN:      { type: 'check', x:  45, y: 521, value: when(isNewPole, d => d.poleCode === '10m (12kN) Goldpine') },
+    poleCodeGoldpine11m9kN:       { type: 'check', x: 173, y: 521, value: when(isNewPole, d => d.poleCode === '11m (9kN) Goldpine') },
+    poleCodeGoldpine11m12kN:      { type: 'check', x: 295, y: 521, value: when(isNewPole, d => d.poleCode === '11m (12kN) Goldpine') },
+    poleCodeGoldpine12m12kN:      { type: 'check', x: 427, y: 521, value: when(isNewPole, d => d.poleCode === '12m (12kN) Goldpine') },
 
     // Custom manufacturer codes (Dulhunty / IUP / Other) — checkbox shows
     // whenever the matching text field is populated, independent of poleCode.
-    dulhuntyCheck:  { type: 'check', x:  45, y: 537, value: d => !!d.dulhuntyCode },
-    dulhuntyText:   { type: 'text', align: 'left', x: 232, y: 539, value: d => d.dulhuntyCode },
-    iupCheck:       { type: 'check', x:  45, y: 552, value: d => !!d.iupCode },
-    iupText:        { type: 'text', align: 'left', x: 184, y: 554, value: d => d.iupCode },
-    otherCodeCheck: { type: 'check', x:  45, y: 568, value: d => !!d.otherCode },
-    otherCodeText:  { type: 'text', align: 'left', x: 232, y: 570, value: d => d.otherCode },
+    dulhuntyCheck:  { type: 'check', x:  45, y: 537, value: when(isDulhunty, d => !!d.dulhuntyCode) },
+    dulhuntyText:   { type: 'text', align: 'left', x: 232, y: 539, value: when(isDulhunty, d => d.dulhuntyCode) },
+    iupCheck:       { type: 'check', x:  45, y: 552, value: when(isIup, d => !!d.iupCode) },
+    iupText:        { type: 'text', align: 'left', x: 184, y: 554, value: when(isIup, d => d.iupCode) },
+    otherCodeCheck: { type: 'check', x:  45, y: 568, value: when(isOtherCode, d => !!d.otherCode) },
+    otherCodeText:  { type: 'text', align: 'left', x: 232, y: 570, value: when(isOtherCode, d => d.otherCode) },
 
     // Pole type grid — 8 options, matched by name instead of index
-    poleType1:      { type: 'check', x:  45, y: 610, value: d => d.poleType === '1 Pole' },
-    poleType1Half:  { type: 'check', x: 174, y: 610, value: d => d.poleType === '1 \u00BD Pole' },
-    poleType2:      { type: 'check', x: 296, y: 610, value: d => d.poleType === '2 Pole' },
-    poleType3:      { type: 'check', x: 429, y: 610, value: d => d.poleType === '3 Pole' },
-    poleType4:      { type: 'check', x:  45, y: 624, value: d => d.poleType === '4 Pole' },
-    poleTypeH:      { type: 'check', x: 174, y: 624, value: d => d.poleType === 'H Pole' },
-    poleTypeDouble: { type: 'check', x: 296, y: 624, value: d => d.poleType === 'Double' },
-    poleTypeStay:   { type: 'check', x: 429, y: 624, value: d => d.poleType === 'Stay Pole' },
+    poleType1:      { type: 'check', x:  45, y: 610, value: when(isNewPole, d => d.poleType === '1 Pole') },
+    poleType1Half:  { type: 'check', x: 174, y: 610, value: when(isNewPole, d => d.poleType === '1 \u00BD Pole') },
+    poleType2:      { type: 'check', x: 296, y: 610, value: when(isNewPole, d => d.poleType === '2 Pole') },
+    poleType3:      { type: 'check', x: 429, y: 610, value: when(isNewPole, d => d.poleType === '3 Pole') },
+    poleType4:      { type: 'check', x:  45, y: 624, value: when(isNewPole, d => d.poleType === '4 Pole') },
+    poleTypeH:      { type: 'check', x: 174, y: 624, value: when(isNewPole, d => d.poleType === 'H Pole') },
+    poleTypeDouble: { type: 'check', x: 296, y: 624, value: when(isNewPole, d => d.poleType === 'Double') },
+    poleTypeStay:   { type: 'check', x: 429, y: 624, value: when(isNewPole, d => d.poleType === 'Stay Pole') },
 
-    poleTypeOtherCheck: { type: 'check', x: 45, y: 639, value: d => d.poleType === 'Other' && !!d.poleTypeOther },
-    poleTypeOtherText:  { type: 'text', align: 'left', x: 148, y: 641, value: d => (d.poleType === 'Other' ? d.poleTypeOther : '') },
+    poleTypeOtherCheck: { type: 'check', x: 45, y: 639, value: when(isNewPole, d => d.poleType === 'Other' && !!d.poleTypeOther) },
+    poleTypeOtherText:  { type: 'text', align: 'left', x: 148, y: 641, value: when(isNewPole, d => (d.poleType === 'Other' ? d.poleTypeOther : '')) },
   },
 
   // ── Page 2 ─────────────────────────────────────────────────────────────────
@@ -233,6 +244,7 @@ export const GRIDS = {
   // ruled lines (no word-wrapping).
   workDescription: {
     x: 48,
+    maxWidth: 500,   // box runs to x≈553; leave a small margin
     rowY: [532, 547, 561, 575, 590, 604, 618, 632, 646, 661, 676, 690, 705, 719, 733],
   },
 }
@@ -278,7 +290,9 @@ export async function generatePolePdf(d, photos = []) {
 
   // ── Page 3: Work description — split on newlines onto fixed ruled lines ──
   const wd = GRIDS.workDescription
-  const descLines = (d.workDescription || '').split('\n')
+  // Word-wrap each paragraph to the box width; a blank line keeps its gap.
+  const descLines = (d.workDescription || '').split('\n').flatMap(para =>
+    para.trim() === '' ? [''] : draw3.wrapText(para, wd.maxWidth))
   descLines.slice(0, wd.rowY.length).forEach((line, i) => {
     draw3.t(wd.x, wd.rowY[i], line)
   })

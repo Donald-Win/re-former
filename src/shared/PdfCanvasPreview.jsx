@@ -7,20 +7,21 @@
  *
  * Layout-shift fix
  * ────────────────
- * The original code set `width: 100%` on each canvas but left height
- * unspecified. Before pdf.js rendered the page content, the canvas had zero
- * intrinsic height, so the scroll container collapsed and then snapped to
- * its full height when rendering completed — a jarring layout shift on every
- * page, particularly visible on multi-page forms.
+ * Each canvas gets `aspect-ratio` set from its viewport before rendering
+ * begins, so the browser reserves the correct height up front.
  *
- * The fix sets `aspect-ratio: <width> / <height>` on each canvas element
- * immediately after the viewport is computed, before rendering begins.
- * The browser can then reserve the correct vertical space as soon as the
- * canvas is appended, so the container height is stable for the entire
- * render duration regardless of how long each page takes to paint.
+ * Error reporting
+ * ───────────────
+ * Every step is tagged with a stage name (check-data, load-document,
+ * load-page, render-page). If anything fails, the stage, the exception, and
+ * basic data facts (byte count, first bytes of the file, pdf.js version)
+ * are shown on screen and written to the error log, so a failure can be
+ * reported without a Mac attached.
  */
 import { useEffect, useRef, useState } from 'react'
 import { pdfjsLib } from './pdfjsInit'
+import { reportError, describeError } from './errorLog'
+import { CopyDiagnosticsButton } from './CopyDiagnosticsButton'
 
 // pdfjs-dist v6 removed PDFDocumentProxy.destroy(): the *loading task* owns
 // teardown of the document and its worker. Never throws, never leaves an
@@ -29,9 +30,26 @@ const destroyTask = (task) => {
   try { Promise.resolve(task?.destroy()).catch(() => {}) } catch (_) { /* already gone */ }
 }
 
+// First bytes of the file as printable text. A saved HTML error page or an
+// empty file looks obviously different from a real PDF ("%PDF-1.7").
+function headerOf(bytes) {
+  try {
+    return Array.from(bytes.slice(0, 8), b => (b >= 32 && b < 127 ? String.fromCharCode(b) : '.')).join('')
+  } catch {
+    return '?'
+  }
+}
+
+const PRE = {
+  whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 11, lineHeight: 1.4,
+  background: 'rgba(0,0,0,0.35)', padding: 8, borderRadius: 6, color: '#f9fafb',
+  margin: '8px 0',
+}
+
 export function PdfCanvasPreview({ pdfBytes }) {
-  const containerRef  = useRef(null)
-  const [status, setStatus] = useState('idle') // 'idle' | 'rendering' | 'done' | 'error'
+  const containerRef = useRef(null)
+  const [status, setStatus]   = useState('idle')   // idle | rendering | done | error
+  const [failure, setFailure] = useState(null)     // { stage, text, info }
 
   useEffect(() => {
     const container = containerRef.current
@@ -40,13 +58,22 @@ export function PdfCanvasPreview({ pdfBytes }) {
     let cancelled = false
     let pdfDoc    = null
     let task      = null
+    let stage     = 'start'
+    const info = `bytes=${pdfBytes.byteLength ?? 'unknown'} header="${headerOf(pdfBytes)}" pdfjs=${pdfjsLib.version ?? 'unknown'}`
 
     // ── Immediately clear any canvases from a previous render ───────────────
     container.innerHTML = ''
     setStatus('rendering')
+    setFailure(null)
 
     ;(async () => {
       try {
+        if (!pdfBytes.byteLength) {
+          stage = 'check-data'
+          throw new Error('the PDF data is empty (0 bytes)')
+        }
+
+        stage = 'load-document'
         // Pass a copy so pdf.js can't accidentally transfer/mutate our bytes
         task = pdfjsLib.getDocument({ data: pdfBytes.slice() })
         pdfDoc = await task.promise
@@ -57,6 +84,7 @@ export function PdfCanvasPreview({ pdfBytes }) {
         for (let pageNum = 1; pageNum <= total; pageNum++) {
           if (cancelled) break
 
+          stage = `load-page ${pageNum} of ${total}`
           const page = await pdfDoc.getPage(pageNum)
           if (cancelled) { page.cleanup(); break }
 
@@ -64,21 +92,13 @@ export function PdfCanvasPreview({ pdfBytes }) {
           // 1.5 gives a good balance of sharpness vs memory.
           const viewport = page.getViewport({ scale: 1.5 })
 
+          stage = `create-canvas page ${pageNum} of ${total} (${Math.round(viewport.width)}x${Math.round(viewport.height)})`
           const canvas  = document.createElement('canvas')
           canvas.width  = viewport.width
           canvas.height = viewport.height
 
-          // ── Aspect-ratio reservation ──────────────────────────────────────
-          // Set aspect-ratio BEFORE appending to the DOM so the browser
-          // reserves the correct height immediately. Without this the canvas
-          // has zero intrinsic height until pdf.js finishes painting — causing
-          // the scroll container to collapse and snap on each page, producing
-          // a visible layout shift on multi-page documents.
-          //
-          // width: 100% makes the canvas fluid; aspect-ratio then drives the
-          // height proportionally. The explicit canvas.width / canvas.height
-          // values are the physical pixel dimensions (already scaled by 1.5),
-          // so the ratio is always exact regardless of the PDF page size.
+          // Set aspect-ratio BEFORE appending so the browser reserves the
+          // correct height immediately.
           canvas.style.cssText = [
             'width: 100%',
             `aspect-ratio: ${viewport.width} / ${viewport.height}`,
@@ -91,10 +111,17 @@ export function PdfCanvasPreview({ pdfBytes }) {
           if (cancelled) { page.cleanup(); break }
           container.appendChild(canvas)
 
-          await page.render({
-            canvasContext: canvas.getContext('2d'),
-            viewport,
-          }).promise
+          stage = `get-2d-context page ${pageNum} of ${total}`
+          const ctx = canvas.getContext('2d')
+          if (!ctx) {
+            throw new Error(
+              `the browser would not give a drawing surface for a ${Math.round(viewport.width)}x${Math.round(viewport.height)} page ` +
+              '(the device may be out of canvas memory)',
+            )
+          }
+
+          stage = `render-page ${pageNum} of ${total}`
+          await page.render({ canvasContext: ctx, viewport }).promise
 
           page.cleanup()
         }
@@ -108,7 +135,8 @@ export function PdfCanvasPreview({ pdfBytes }) {
 
       } catch (err) {
         if (!cancelled) {
-          console.error('PdfCanvasPreview render error:', err)
+          reportError('pdf-preview', err, { stage, info })
+          setFailure({ stage, text: describeError(err), info })
           setStatus('error')
         }
       }
@@ -136,16 +164,18 @@ export function PdfCanvasPreview({ pdfBytes }) {
           Rendering pages…
         </div>
       )}
-      {status === 'error' && (
-        <div style={{
-          textAlign: 'center', padding: '20px 0',
-          color: '#f87171', fontSize: 13,
-        }}>
-          Could not render PDF preview.
+      {status === 'error' && failure && (
+        <div role="alert" style={{ padding: '12px 14px', color: '#fca5a5', fontSize: 13, background: '#111827', borderRadius: 8 }}>
+          <div style={{ fontWeight: 700, marginBottom: 4 }}>Could not render PDF preview.</div>
+          <div style={{ color: '#d1d5db' }}>Stage: {failure.stage}</div>
+          <pre style={PRE}>{`${failure.text}\n${failure.info}`}</pre>
+          <div style={{ color: '#9ca3af', fontSize: 11, marginBottom: 8 }}>
+            Send a screenshot of this message, or use the Copy diagnostics button.
+          </div>
+          <CopyDiagnosticsButton accent="#4f46e5" />
         </div>
       )}
       <div ref={containerRef} />
     </div>
   )
 }
-

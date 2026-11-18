@@ -41,6 +41,10 @@ const getTemplateUrl = () =>
 // FIELDS — Page 1 (page 2 has no simple named fields, only the GRIDS table).
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Visibility rule — the reason field only shows for Removed / Replaced (see step 3 UI).
+const when = (cond, fn) => d => (cond(d) ? fn(d) : '')
+const showRemoval = d => d.typeOfChange === 'Removed' || d.typeOfChange === 'Replaced'
+
 export const FIELDS = {
   p1: {
     // ── Header ─────────────────────────────────────────────────────────────────
@@ -99,7 +103,7 @@ export const FIELDS = {
       value: d => (d.ownership === 'Other' ? d.ownershipOther : ''),
     },
 
-    reasonForRemoval: { type: 'text', align: 'left', x: 140, y: 467, value: d => d.reasonForRemoval },
+    reasonForRemoval: { type: 'text', align: 'left', x: 140, y: 467, value: when(showRemoval, d => d.reasonForRemoval) },
 
     // ── Remote controlled / indication ───────────────────────────────────────────
     remoteControlledYes: { type: 'check', x: 156, y: 655, value: d => d.remoteControlled === 'Yes' },
@@ -193,4 +197,5 @@ export async function generateEEPdf(d, photos = []) {
 
   return new Uint8Array(await pdfDoc.save())
 }
+
 

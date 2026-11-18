@@ -122,7 +122,9 @@ export function DraftPicker({
   }
 
   const handleLoad = (draft) => {
-    onLoad(draft)
+    // onLoad returns false when the person cancels the overwrite confirm —
+    // keep the picker open in that case.
+    if (onLoad(draft) === false) return
     onClose()
   }
 
@@ -356,3 +358,4 @@ export function DraftPicker({
 
   return null
 }
+

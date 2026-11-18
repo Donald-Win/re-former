@@ -16,14 +16,14 @@ export function SignaturePad({ value, onChange, accent = APP_ACCENT }) {
   const lastTime  = useRef(null)
   const lastWidth = useRef(2.5)
 
-  // Set just before this component calls onChange() itself (after drawing a
-  // stroke, or clearing). Lets the value-sync effect below distinguish a
-  // self-triggered update — where the canvas pixels are already correct, so
-  // reloading from the data URL would just overwrite freshly-drawn ink with
-  // a flattened, re-scaled copy of itself — from an externally-supplied
-  // value such as a signature loaded from saved user details, which DOES
-  // need to be painted onto the canvas since it starts out blank.
-  const skipNextSync = useRef(false)
+  // The last value this pad emitted through onChange (after a stroke, or a
+  // clear). The value-sync effect below compares against it: a value we just
+  // emitted is already on the canvas, so it must not be repainted (repainting
+  // would overwrite freshly-drawn ink with a flattened, re-scaled copy). Any
+  // other value — such as a signature loaded from saved user details — is
+  // painted, because the canvas starts out blank. Comparing values, rather than
+  // setting a one-shot flag, means a no-op change can't leave a stale flag set.
+  const lastEmitted = useRef(undefined)
 
   // ── Size canvas to physical pixels; re-size on orientation change ───
   useEffect(() => {
@@ -70,13 +70,10 @@ export function SignaturePad({ value, onChange, accent = APP_ACCENT }) {
   //                      value, so a signature loaded from user prefs was
   //                      invisible until the user re-signed.
   // Skipped when the change originated from this component's own onChange
-  // call (see skipNextSync above) so a freshly-drawn stroke isn't
-  // immediately replaced by a flattened, re-scaled reload of itself.
+  // (see lastEmitted above) so a freshly-drawn stroke isn't immediately
+  // replaced by a flattened, re-scaled reload of itself.
   useEffect(() => {
-    if (skipNextSync.current) {
-      skipNextSync.current = false
-      return
-    }
+    if (value === lastEmitted.current) return   // our own change — pixels already right
 
     const canvas = canvasRef.current
     if (!canvas) return
@@ -280,8 +277,9 @@ export function SignaturePad({ value, onChange, accent = APP_ACCENT }) {
     // Export as PNG to preserve transparency — signature overlays a printed line.
     // Flag this as a self-triggered update so the value-sync effect above
     // doesn't immediately reload and re-scale the image we just drew.
-    skipNextSync.current = true
-    onChange(tc.toDataURL('image/png'))
+    const out = tc.toDataURL('image/png')
+    lastEmitted.current = out
+    onChange(out)
   }
 
   const handleClear = () => {
@@ -289,7 +287,7 @@ export function SignaturePad({ value, onChange, accent = APP_ACCENT }) {
     if (!canvas) return
     const dpr = Math.min(window.devicePixelRatio || 1, 2)
     canvas.getContext('2d').clearRect(0, 0, canvas.width / dpr, canvas.height / dpr)
-    skipNextSync.current = true
+    lastEmitted.current = ''
     onChange('')
   }
 
@@ -345,3 +343,4 @@ export function SignaturePad({ value, onChange, accent = APP_ACCENT }) {
     </div>
   )
 }
+

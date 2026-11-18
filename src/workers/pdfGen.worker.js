@@ -56,6 +56,8 @@ const GENERATORS = {
     () => import('../wizards/generators/ZoneSubPdfGenerator.js'),
   DistPanelPdfGenerator:
     () => import('../wizards/generators/DistPanelPdfGenerator.js'),
+  StreetlightPdfGenerator:
+    () => import('../wizards/generators/StreetlightPdfGenerator.js'),
 }
 
 // ── Exposed API ───────────────────────────────────────────────────────────────
@@ -92,4 +94,5 @@ Comlink.expose({
     return Comlink.transfer(bytes, [bytes.buffer])
   },
 })
+
 

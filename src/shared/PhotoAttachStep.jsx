@@ -61,7 +61,7 @@
  * same as `false` — the safe, conservative default — so older saved drafts
  * keep working exactly as before.
  */
-import React, { useRef } from 'react'
+import React, { useRef, useState } from 'react'
 import { Camera, X, ImageIcon } from 'lucide-react'
 
 const MAX_ATTACH_PX      = 1600  // longest edge cap — matches appendPhotosToPdf.js
@@ -122,6 +122,9 @@ function readFileAsPhoto(file) {
 
 export function PhotoAttachStep({ photos = [], onChange, accent = '#4f46e5' }) {
   const inputRef = useRef(null)
+  // How many of the most recently selected photos could not be read. Shown to
+  // the tech so a photo that didn't attach is never silently missing.
+  const [failedCount, setFailedCount] = useState(0)
 
   const handleFiles = (e) => {
     const files = Array.from(e.target.files || [])
@@ -143,6 +146,7 @@ export function PhotoAttachStep({ photos = [], onChange, accent = '#4f46e5' }) {
       }
 
       const failed = results.filter(r => r.status === 'rejected')
+      setFailedCount(failed.length)
       if (failed.length > 0) {
         console.warn(
           `PhotoAttachStep: ${failed.length} photo(s) failed to load`,
@@ -181,6 +185,17 @@ export function PhotoAttachStep({ photos = [], onChange, accent = '#4f46e5' }) {
         Select photos to attach at the end of the PDF.
         Each photo appears on its own full page — landscape photos are automatically placed on a landscape page.
       </p>
+
+      {failedCount > 0 && (
+        <div role="alert" style={{
+          background: '#fef2f2', border: '1.5px solid #fca5a5', borderRadius: 10,
+          padding: '10px 14px', marginBottom: 12,
+          fontSize: 13, color: '#b91c1c', fontWeight: 600, lineHeight: 1.4,
+        }}>
+          {failedCount} photo{failedCount !== 1 ? 's' : ''} could not be read and {failedCount !== 1 ? 'were' : 'was'} not added.
+          Try again, or pick a JPEG or PNG photo.
+        </div>
+      )}
 
       {/* Hidden file input — accepts any image, allows multiples, prefers camera on iOS */}
       <input
@@ -323,4 +338,5 @@ export function PhotoAttachStep({ photos = [], onChange, accent = '#4f46e5' }) {
     </div>
   )
 }
+
 
