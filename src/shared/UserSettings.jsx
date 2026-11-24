@@ -1,16 +1,20 @@
 /**
  * UserSettings — dedicated settings page for persistent user details.
  *
- * Stores: contractor name, printed name, ISN ID, competency cert no, signature.
- * These are loaded silently into every wizard and written to the PDF
- * without the user being asked each time.
+ * Stores: contractor name, printed name, ISN ID, competency cert no, signature,
+ * up to three named test sets (make, model, serial) for the Cable Test Report,
+ * and the default view. These are loaded silently into every wizard and written
+ * to the PDF without the user being asked each time.
  */
 import { useState, useEffect, useRef } from 'react'
-import { CheckCircle2, User, Building2, PenLine, Trash2, FileText, Hash, Settings, Briefcase, List } from 'lucide-react'
-import { getUserPrefs, saveUserPref } from './userPrefs'
+import { CheckCircle2, User, Building2, PenLine, Trash2, FileText, Hash, Settings, Briefcase, List, Gauge, Plus, X } from 'lucide-react'
+import { getUserPrefs, saveUserPref, getTestSets, saveTestSets, MAX_TEST_SETS } from './userPrefs'
 import { SignaturePad } from './SignaturePad'
 import { BackupRestore } from './BackupRestore'
 import { APP_ACCENT } from './constants'
+
+const blankSet = () => ({ name: '', make: '', model: '', serial: '' })
+const isBlank  = s => !s.name.trim() && !s.make.trim() && !s.model.trim() && !s.serial.trim()
 
 export function UserSettings({ onClose }) {
   const [contractor, setContractor] = useState('')
@@ -18,6 +22,8 @@ export function UserSettings({ onClose }) {
   const [isnId,      setIsnId]      = useState('')
   const [certNo,     setCertNo]     = useState('')
   const [signed,     setSigned]     = useState('')
+  const [testSets,   setTestSets]   = useState([])
+  const [testError,  setTestError]  = useState('')
   const [defaultView, setDefaultView] = useState('workType')
   const [saved,      setSaved]      = useState(false)
   const savedTimerRef = useRef(null)
@@ -32,15 +38,32 @@ export function UserSettings({ onClose }) {
     setIsnId(prefs.isnId           || '')
     setCertNo(prefs.certNo         || '')
     setSigned(prefs.signed         || '')
+    setTestSets(getTestSets())
     setDefaultView(prefs.defaultView || 'workType')
   }, [])
 
+  const updateSet = (i, field, value) =>
+    setTestSets(prev => prev.map((s, idx) => (idx === i ? { ...s, [field]: value } : s)))
+
+  const removeSet = i => setTestSets(prev => prev.filter((_, idx) => idx !== i))
+
+  const addSet = () => setTestSets(prev => (prev.length < MAX_TEST_SETS ? [...prev, blankSet()] : prev))
+
   const handleSave = () => {
+    // A set with details but no name can't be picked in the wizard, so ask for one.
+    const unnamed = testSets.some(s => !isBlank(s) && !s.name.trim())
+    if (unnamed) {
+      setTestError('Give each test set a name, so you can pick it in the wizard.')
+      return
+    }
+    setTestError('')
     saveUserPref('contractor',  contractor)
     saveUserPref('namePrint',   namePrint)
     saveUserPref('isnId',       isnId)
     saveUserPref('certNo',      certNo)
     saveUserPref('signed',      signed)
+    const kept = saveTestSets(testSets.filter(s => !isBlank(s)))
+    setTestSets(kept)
     saveUserPref('defaultView', defaultView)
     setSaved(true)
     if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
@@ -54,11 +77,14 @@ export function UserSettings({ onClose }) {
     saveUserPref('isnId',      '')
     saveUserPref('certNo',     '')
     saveUserPref('signed',     '')
+    saveTestSets([])
     setContractor('')
     setNamePrint('')
     setIsnId('')
     setCertNo('')
     setSigned('')
+    setTestSets([])
+    setTestError('')
   }
 
   const inp = {
@@ -71,11 +97,18 @@ export function UserSettings({ onClose }) {
     transition: 'border-color 0.15s',
   }
 
+  const smallInp = { ...inp, padding: '9px 11px', fontSize: 14 }
+
   const lbl = {
     display: 'flex', alignItems: 'center', gap: 7,
     fontSize: 12, fontWeight: 700, color: APP_ACCENT,
     textTransform: 'uppercase', letterSpacing: '0.07em',
     marginBottom: 6,
+  }
+
+  const subLbl = {
+    fontSize: 11, fontWeight: 700, color: '#6b7280', marginBottom: 4,
+    textTransform: 'uppercase', letterSpacing: '0.05em',
   }
 
   const section = {
@@ -213,6 +246,107 @@ export function UserSettings({ onClose }) {
           </div>
         </div>
 
+        {/* Test Equipment — up to MAX_TEST_SETS named sets */}
+        <div style={section}>
+          <label style={lbl}>
+            <Gauge size={14} />
+            Test Equipment
+          </label>
+          <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 12, lineHeight: 1.4 }}>
+            Save up to {MAX_TEST_SETS} test sets and give each a name, such as "Megger" or "Van 3 kit".
+            On the Cable Test Report's Test Equipment step, pick the set you are using.
+            For other gear, type the details in by hand.
+          </div>
+
+          {testSets.length === 0 && (
+            <div style={{
+              background: '#f9fafb', border: '1px dashed #d1d5db', borderRadius: 10,
+              padding: '12px', marginBottom: 12, fontSize: 12, color: '#6b7280', textAlign: 'center',
+            }}>
+              No test sets saved yet.
+            </div>
+          )}
+
+          {testSets.map((set, i) => (
+            <div key={i} style={{
+              border: `1.5px solid ${APP_ACCENT}30`, borderRadius: 12,
+              padding: '12px 12px 10px', marginBottom: 12, background: '#fafaff',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: APP_ACCENT, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Test set {i + 1}
+                </span>
+                <button
+                  onClick={() => removeSet(i)}
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444',
+                    fontSize: 13, fontWeight: 700, padding: '2px 6px', borderRadius: 6,
+                    fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4,
+                  }}
+                >
+                  <X size={14} /> Remove
+                </button>
+              </div>
+              <div style={{ marginBottom: 10 }}>
+                <div style={subLbl}>Name</div>
+                <input
+                  type="text"
+                  value={set.name}
+                  onChange={e => updateSet(i, 'name', e.target.value)}
+                  placeholder="e.g. Megger MIT1025"
+                  style={smallInp}
+                />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 10px' }}>
+                <div>
+                  <div style={subLbl}>Make</div>
+                  <input type="text" value={set.make} onChange={e => updateSet(i, 'make', e.target.value)}
+                    placeholder="e.g. Megger" style={smallInp} />
+                </div>
+                <div>
+                  <div style={subLbl}>Model</div>
+                  <input type="text" value={set.model} onChange={e => updateSet(i, 'model', e.target.value)}
+                    placeholder="e.g. MIT1025" style={smallInp} />
+                </div>
+                <div style={{ gridColumn: '1 / span 2' }}>
+                  <div style={subLbl}>Serial No.</div>
+                  <input type="text" value={set.serial} onChange={e => updateSet(i, 'serial', e.target.value)}
+                    placeholder="e.g. 1234567" style={smallInp} />
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {testSets.length < MAX_TEST_SETS && (
+            <button
+              onClick={addSet}
+              style={{
+                width: '100%', padding: '11px 0', borderRadius: 10,
+                border: `2px dashed ${APP_ACCENT}`, background: `${APP_ACCENT}0d`,
+                color: APP_ACCENT, fontFamily: 'inherit', fontSize: 14, fontWeight: 700,
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              }}
+            >
+              <Plus size={16} /> Add test set ({testSets.length} / {MAX_TEST_SETS})
+            </button>
+          )}
+
+          {testSets.length >= MAX_TEST_SETS && (
+            <div style={{ fontSize: 11, color: '#9ca3af', textAlign: 'center' }}>
+              You have {MAX_TEST_SETS} test sets. Remove one to add another.
+            </div>
+          )}
+
+          {testError && (
+            <div role="alert" style={{
+              marginTop: 10, padding: '8px 12px', borderRadius: 8, fontSize: 12,
+              background: '#fff1f2', border: '1px solid #fecaca', color: '#dc2626',
+            }}>
+              {testError}
+            </div>
+          )}
+        </div>
+
         {/* Default View */}
         <div style={section}>
           <label style={lbl}>
@@ -297,5 +431,3 @@ export function UserSettings({ onClose }) {
     </div>
   )
 }
-
-

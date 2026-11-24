@@ -13,6 +13,19 @@
 
 export const CHANGELOGS = [
   {
+    version: '2.35.0',
+    changes: [
+      {
+        heading: 'New form: As-built Cable Test Report',
+        detail: "360S014EL can now be filled out in the app. Tap it in Browse All Forms (or under any work type that lists it) and choose \"Fill Out Form\". It covers the test type and voltage, feeder and route, a schematic drawn with the same editor as the plan forms, the cable description, insulation test results, test equipment and phase polarity. Photos can be attached like on the other forms.",
+      },
+      {
+        heading: 'Named test sets saved in My Details',
+        detail: "My Details has a new Test Equipment section where you can save up to three named test sets, such as \"Megger\" or \"Van 3 kit\", each with its make, model and serial number. On the Cable Test Report's Test Equipment step, pick the set you are using. For other gear, type the details in by hand, and you can save them under a name from that step."
+      },
+    ],
+  },
+  {
     version: '2.34.0',
     changes: [
       {
