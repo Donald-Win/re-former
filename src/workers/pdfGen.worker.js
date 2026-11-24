@@ -40,6 +40,8 @@ const GENERATORS = {
     () => import('../wizards/generators/StreetlightPdfGenerator.js'),
   CableTestPdfGenerator:
     () => import('../wizards/generators/CableTestPdfGenerator.js'),
+  ConductorTensionPdfGenerator:
+    () => import('../wizards/generators/ConductorTensionPdfGenerator.js'),
 }
 
 // ── Exposed API ───────────────────────────────────────────────────────────────
@@ -75,3 +77,4 @@ Comlink.expose({
     return Comlink.transfer(bytes, [bytes.buffer])
   },
 })
+

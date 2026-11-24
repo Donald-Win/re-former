@@ -15,6 +15,7 @@ import DistributionTransformerWizard from './wizards/DistributionTransformerWiza
 import DistPanelWizard from './wizards/DistPanelWizard'
 import StreetlightWizard from './wizards/StreetlightWizard'
 import CableTestWizard from './wizards/CableTestWizard'
+import ConductorTensionWizard from './wizards/ConductorTensionWizard'
 import { AuthGate } from './auth/AuthGate'
 import { ensureFreshAccess } from './auth/auth'
 import { UserSettings } from './shared/UserSettings'
@@ -24,7 +25,7 @@ import { PdfCanvasPreview } from './shared/PdfCanvasPreview'
 import { setAppVersion, reportError, describeError } from './shared/errorLog'
 import { CopyDiagnosticsButton } from './shared/CopyDiagnosticsButton'
 
-const APP_VERSION = '2.35.0'
+const APP_VERSION = '2.36.0'
 setAppVersion(APP_VERSION)
 
 // ── Wizard config (module-level — never recreated) ────────────────────────────
@@ -119,6 +120,13 @@ const WIZARD_CONFIG = {
     fileName:  '360S014EL.pdf',
     accent:    '#4f46e5',
     Component: CableTestWizard,
+  },
+  '360S014EQ': {
+    label:     '360S014EQ – Commissioning Conductor Tension Method & Results Per Run Form',
+    pdfName:   'Conductor Tension Run Form',
+    fileName:  '360S014EQ.pdf',
+    accent:    '#4f46e5',
+    Component: ConductorTensionWizard,
   },
 }
 
@@ -1392,3 +1400,4 @@ function App() {
 }
 
 export default App
+

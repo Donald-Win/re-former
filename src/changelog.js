@@ -13,6 +13,15 @@
 
 export const CHANGELOGS = [
   {
+    version: '2.36.0',
+    changes: [
+      {
+        heading: 'New form: Commissioning Conductor Tension Method & Results Per Run Form',
+        detail: "360S014EQ can now be filled out in the app. Tap it in Browse All Forms (or under Conductor Tension Works) and choose \"Fill Out Form\". It covers the planning and confirmed pole numbers, the conductor type, the test date, temperature and time, the tensioning method with its readings, the conductor clearance over an access way or road crossing, and comments. Photos can be attached like on the other forms.",
+      },
+    ],
+  },
+  {
     version: '2.35.0',
     changes: [
       {
@@ -627,3 +636,4 @@ export const CHANGELOGS = [
     ],
   },
 ]
+
