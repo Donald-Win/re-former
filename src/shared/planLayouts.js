@@ -57,16 +57,24 @@ export const STREETLIGHT_LAYOUT = Object.freeze({
   north: Object.freeze({ cx: 31.25, cy: 41.35, r: 22.8 }),
 })
 
+// 360S014EL — Cable Test Report, page 1 "SCHEMATIC" box.
+// Measured from the blank form's box rules (pdfplumber, top-origin): outer
+// edges x 37.2–553.3 and y 314.8–436.3. The box has no printed north circle.
+export const CABLE_TEST_LAYOUT = Object.freeze({
+  box: Object.freeze({ x: 37.4, y: 314.8, w: 515.4, h: 121.0 }),
+  north: null,
+})
+
 const BY_FORM = {
   '360S014EJ': EARTH_LAYOUT,
   '360S014EC': POLE_LAYOUT,
   '360S014EB': EB_LAYOUT,
   '360S014EA': LV_CONNECTION_LAYOUT,
   '360S014EK': STREETLIGHT_LAYOUT,
+  '360S014EL': CABLE_TEST_LAYOUT,
 }
 
 /** The layout for a form code. Unknown codes get the Earth layout. */
 export function layoutFor(formKey) {
   return BY_FORM[formKey] || EARTH_LAYOUT
 }
-

@@ -14,6 +14,7 @@ import HVInspectionWizard from './wizards/HVInspectionWizard'
 import DistributionTransformerWizard from './wizards/DistributionTransformerWizard'
 import DistPanelWizard from './wizards/DistPanelWizard'
 import StreetlightWizard from './wizards/StreetlightWizard'
+import CableTestWizard from './wizards/CableTestWizard'
 import { AuthGate } from './auth/AuthGate'
 import { ensureFreshAccess } from './auth/auth'
 import { UserSettings } from './shared/UserSettings'
@@ -23,7 +24,7 @@ import { PdfCanvasPreview } from './shared/PdfCanvasPreview'
 import { setAppVersion, reportError, describeError } from './shared/errorLog'
 import { CopyDiagnosticsButton } from './shared/CopyDiagnosticsButton'
 
-const APP_VERSION = '2.34.0'
+const APP_VERSION = '2.35.0'
 setAppVersion(APP_VERSION)
 
 // ── Wizard config (module-level — never recreated) ────────────────────────────
@@ -111,6 +112,13 @@ const WIZARD_CONFIG = {
     fileName:  '360S014EK.pdf',
     accent:    '#4f46e5',
     Component: StreetlightWizard,
+  },
+  '360S014EL': {
+    label:     '360S014EL – As-built Cable Test Report',
+    pdfName:   'As-built Cable Test Report',
+    fileName:  '360S014EL.pdf',
+    accent:    '#4f46e5',
+    Component: CableTestWizard,
   },
 }
 

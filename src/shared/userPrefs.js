@@ -9,6 +9,12 @@
  *   rf_pref_certNo            — competency certificate number
  *   rf_pref_dateWorkCompleted — last-used date (YYYY-MM-DD), refreshed to today on each load
  *   rf_pref_defaultView       — which screen the app opens to: 'workType' | 'allForms'
+ *   rf_pref_testSets          — JSON list of up to 3 named test sets:
+ *                               [{ name, make, model, serial }, ...]
+ *
+ * Earlier builds stored one test set under rf_pref_testEquipMake/Model/Serial.
+ * getTestSets() reads those as a single set named "My test set" until the
+ * list is saved, after which the old keys are removed.
  */
 
 const KEYS = {
@@ -19,7 +25,18 @@ const KEYS = {
   certNo:             'rf_pref_certNo',
   dateWorkCompleted:  'rf_pref_dateWorkCompleted',
   defaultView:        'rf_pref_defaultView',
+  testSets:           'rf_pref_testSets',
 }
+
+// Keys used by the single test set in earlier builds (read for migration only).
+const LEGACY_TEST_KEYS = {
+  make:   'rf_pref_testEquipMake',
+  model:  'rf_pref_testEquipModel',
+  serial: 'rf_pref_testEquipSerial',
+}
+
+export const MAX_TEST_SETS = 3
+const MAX_TEXT = 80
 
 /** Today's date as YYYY-MM-DD (matches HTML date input format). */
 function todayString() {
@@ -32,7 +49,7 @@ function todayString() {
 
 /**
  * Returns { contractor, namePrint, isnId, signed, certNo, dateWorkCompleted,
- * defaultView } from localStorage.
+ * defaultView, testSets } from localStorage.
  * dateWorkCompleted always returns today — it's used to pre-fill the field,
  * and the tech can change it if the work was done on a different day.
  * defaultView falls back to 'workType' — the app's original default screen —
@@ -47,6 +64,7 @@ export function getUserPrefs() {
     certNo:             localStorage.getItem(KEYS.certNo)            || '',
     dateWorkCompleted:  todayString(),
     defaultView:        localStorage.getItem(KEYS.defaultView)       || 'workType',
+    testSets:           getTestSets(),
   }
 }
 
@@ -58,6 +76,54 @@ export function saveUserPref(key, value) {
   } else {
     localStorage.removeItem(KEYS[key])
   }
+}
+
+// ── Test sets ────────────────────────────────────────────────────────────────
+
+const clean = v => (typeof v === 'string' ? v.trim().slice(0, MAX_TEXT) : '')
+
+/** Keep only well-formed sets with a name, trimmed, capped at MAX_TEST_SETS. */
+function sanitizeTestSets(list) {
+  return (Array.isArray(list) ? list : [])
+    .filter(s => s && typeof s === 'object')
+    .map(s => ({ name: clean(s.name), make: clean(s.make), model: clean(s.model), serial: clean(s.serial) }))
+    .filter(s => s.name)
+    .slice(0, MAX_TEST_SETS)
+}
+
+/** The saved test sets, in the order they were saved. */
+export function getTestSets() {
+  let list = []
+  try {
+    const raw = localStorage.getItem(KEYS.testSets)
+    if (raw) list = JSON.parse(raw)
+  } catch {
+    list = []
+  }
+  if (!Array.isArray(list) || list.length === 0) {
+    // Migrate the single set saved by earlier builds, if there is one.
+    const legacy = {
+      name:   'My test set',
+      make:   localStorage.getItem(LEGACY_TEST_KEYS.make)   || '',
+      model:  localStorage.getItem(LEGACY_TEST_KEYS.model)  || '',
+      serial: localStorage.getItem(LEGACY_TEST_KEYS.serial) || '',
+    }
+    if (legacy.make || legacy.model || legacy.serial) list = [legacy]
+  }
+  return sanitizeTestSets(list)
+}
+
+/**
+ * Replace the saved test sets. Sets without a name are dropped, and no more
+ * than MAX_TEST_SETS are kept. Returns the list that was actually saved.
+ */
+export function saveTestSets(list) {
+  const cleaned = sanitizeTestSets(list)
+  localStorage.setItem(KEYS.testSets, JSON.stringify(cleaned))
+  localStorage.removeItem(LEGACY_TEST_KEYS.make)
+  localStorage.removeItem(LEGACY_TEST_KEYS.model)
+  localStorage.removeItem(LEGACY_TEST_KEYS.serial)
+  return cleaned
 }
 
 /**
@@ -90,4 +156,3 @@ export function getBaseFormState(extras = {}) {
     ...extras,
   }
 }
-
