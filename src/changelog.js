@@ -1,13 +1,12 @@
 // ── Changelog ────────────────────────────────────────────────────────────────
 // Each entry in CHANGELOGS is a batch with a unique version key.
-// Users see ALL batches they haven't dismissed yet — so if you push two
-// updates before a user opens the app, they'll see both in sequence.
+// Users see ALL batches they haven't dismissed yet.
 //
 // To announce an update:
 //   1. Add a NEW object to the TOP of the CHANGELOGS array
 //   2. Give it a unique `version` string
 //   3. Fill in the `changes` array
-//   4. Deploy — users see it once, then never again
+//   4. Deploy
 //
 // To deploy silently: don't touch this file.
 
@@ -16,8 +15,8 @@ export const CHANGELOGS = [
     version: '2.36.0',
     changes: [
       {
-        heading: 'New form: Commissioning Conductor Tension Method & Results Per Run Form',
-        detail: "360S014EQ can now be filled out in the app. Tap it in Browse All Forms (or under Conductor Tension Works) and choose \"Fill Out Form\". It covers the planning and confirmed pole numbers, the conductor type, the test date, temperature and time, the tensioning method with its readings, the conductor clearance over an access way or road crossing, and comments. Photos can be attached like on the other forms.",
+        heading: 'New form: Conductor Tension Method & Results Per Run',
+        detail: '360S014EQ is now available under Browse All Forms and Conductor Tension Works.',
       },
     ],
   },
@@ -25,12 +24,12 @@ export const CHANGELOGS = [
     version: '2.35.0',
     changes: [
       {
-        heading: 'New form: As-built Cable Test Report',
-        detail: "360S014EL can now be filled out in the app. Tap it in Browse All Forms (or under any work type that lists it) and choose \"Fill Out Form\". It covers the test type and voltage, feeder and route, a schematic drawn with the same editor as the plan forms, the cable description, insulation test results, test equipment and phase polarity. Photos can be attached like on the other forms.",
+        heading: 'New form: Cable Test Report',
+        detail: '360S014EL is now available. Includes a schematic drawn with the plan editor.',
       },
       {
-        heading: 'Named test sets saved in My Details',
-        detail: "My Details has a new Test Equipment section where you can save up to three named test sets, such as \"Megger\" or \"Van 3 kit\", each with its make, model and serial number. On the Cable Test Report's Test Equipment step, pick the set you are using. For other gear, type the details in by hand, and you can save them under a name from that step."
+        heading: 'Saved test sets in My Details',
+        detail: 'Save up to three named test sets (make, model, serial) and pick one on the Cable Test Report.',
       },
     ],
   },
@@ -38,20 +37,16 @@ export const CHANGELOGS = [
     version: '2.34.0',
     changes: [
       {
-        heading: 'Clearer messages when something goes wrong',
-        detail: "When a form, preview, PDF or share fails, the message now says which step failed and why, instead of a general 'could not' message. Please include that message if you ask for help.",
+        heading: 'Clearer error messages',
+        detail: 'Errors now say which step failed and why. Use Copy diagnostics on any error screen to share them.',
       },
       {
-        heading: 'Blank forms that won\'t open now explain why',
-        detail: "If a blank form can't be loaded, the viewer shows the reason, with Try again and Open in new tab buttons. The app no longer opens a new tab by itself.",
+        heading: 'Blank forms explain failures',
+        detail: 'If a blank form won\'t open, the viewer shows the reason with Try again and Open in new tab.',
       },
       {
-        heading: 'Copy diagnostics',
-        detail: "On any error screen there is now a Copy diagnostics button. It copies a short report with the app version, the device and the recent errors. If copying isn't possible, the report appears in a box you can select and copy by hand. No form details, names or signatures are included.",
-      },
-      {
-        heading: 'Screen errors no longer leave a blank screen',
-        detail: "If the app hits an unexpected error while showing a screen, it now shows a message with a Reload app button. Your saved drafts and My Details are kept.",
+        heading: 'Error screens no longer go blank',
+        detail: 'Unexpected errors show a message and a Reload app button. Drafts and My Details are kept.',
       },
     ],
   },
@@ -59,8 +54,8 @@ export const CHANGELOGS = [
     version: '2.33.0',
     changes: [
       {
-        heading: 'New form: As-built Streetlight Alteration/Installation Record',
-        detail: "360S014EK can now be filled out in the app. Tap it in Browse All Forms (or under Streetlights) and choose \"Fill Out Form\". It covers the owner and pole details, the conductor, the lamp removed and the lamp installed (date, wattage and type), the Dusk/Dawn setting, and a dimensioned plan drawn on screen. Photos can be attached like on the other forms.",
+        heading: 'New form: Streetlight Alteration/Installation Record',
+        detail: '360S014EK is now available, with a dimensioned plan.',
       },
     ],
   },
@@ -68,40 +63,20 @@ export const CHANGELOGS = [
     version: '2.32.1',
     changes: [
       {
-        heading: 'Printed forms only show what was filled in for the visible section',
-        detail: "If you filled in a section and then changed your answer (for example, a pole's activity, or an underground main changed to overhead), the hidden section's details no longer print on the form. This applies to the Pole Record, Electrical Equipment Record and Electrical Distribution Record.",
+        heading: 'Hidden sections no longer print',
+        detail: 'Details from a section you have since hidden are left off the printed form.',
       },
       {
-        heading: 'Panel layout: changing a fuse carrier keeps the row details',
-        detail: "Tapping a carrier on the panel grid no longer deletes the details typed into that row. Hidden rows keep their details and print again if the carrier is selected later.",
+        heading: 'Panel layout fixes',
+        detail: 'Changing a fuse carrier keeps the row details. Long Pole Record work descriptions wrap.',
       },
       {
-        heading: 'Loading a draft',
-        detail: "Loading a saved draft now replaces the photos with the draft's own photos, as it always should. If the form already has progress you're asked to confirm before it's replaced.",
+        heading: 'Draft and share fixes',
+        detail: 'Loading a draft replaces photos properly. A failed share no longer clears your work.',
       },
       {
-        heading: 'Sharing a PDF',
-        detail: "The draft is only cleared once the PDF has actually been shared or opened for printing, so a failed share no longer throws away your work.",
-      },
-      {
-        heading: 'Pole Record — work description',
-        detail: "Long lines in the work description now wrap onto the next line, so nothing runs off the edge of the form.",
-      },
-      {
-        heading: 'Drawn plans print at the right size',
-        detail: "Circles and dots on a drawn plan now print at the size they show on screen.",
-      },
-      {
-        heading: 'Photos that can\'t be read are reported',
-        detail: "If a photo can't be read it's now flagged on screen, instead of quietly missing from the list.",
-      },
-      {
-        heading: 'GPS height is labelled accurately',
-        detail: "The height filled in from GPS is a height above the reference surface, not height above sea level. The button now says so.",
-      },
-      {
-        heading: 'Background fixes',
-        detail: "Recovering from a stalled PDF no longer affects other work. The signature pad handles clearing and reloading a saved signature more reliably. Settings and the Zone Substation form have smaller internal fixes.",
+        heading: 'Plan and photo fixes',
+        detail: 'Drawn circles print at the on-screen size. Unreadable photos are flagged. GPS height is labelled correctly.',
       },
     ],
   },
@@ -109,8 +84,8 @@ export const CHANGELOGS = [
     version: '2.32.0',
     changes: [
       {
-        heading: 'New form: As-built Underground Network Distribution Panel Layout Record',
-        detail: "360S014EI can now be filled out in the app. Tap it in Browse All Forms (or choose \"Fill Out Form\") to enter the panel details, the fuse ways fitted, and up to 16 rows of links or fuses. Each row takes its destination, LV disconnector, Link or Fuse, Open or Closed, fuse size, holder rating and cable details. Rows you leave untouched print blank.",
+        heading: 'New form: Underground Panel Layout Record',
+        detail: '360S014EI is now available, with fuse-row entry for up to 16 rows.',
       },
     ],
   },
@@ -118,8 +93,8 @@ export const CHANGELOGS = [
     version: '2.31.0',
     changes: [
       {
-        heading: 'Arrows, dots and bars on line ends',
-        detail: "Lines on the plan can now finish with an arrow, a dot or a flat bar instead of a plain end. Choose the finish in the Line tool or on a selected line, and apply it to the start, the end or both ends. It takes the line's colour and weight, and prints on the form the same way.",
+        heading: 'Line ends',
+        detail: 'Lines can finish with an arrow, dot or bar at either or both ends.',
       },
     ],
   },
@@ -127,8 +102,8 @@ export const CHANGELOGS = [
     version: '2.30.0',
     changes: [
       {
-        heading: 'LV Connection Record — Dimensioned Plan',
-        detail: "The LV Connection Record has a new Dimensioned Plan step, before Work Description. Draw the conductor route in the plan box: the pole, box, cables, ducts and dimensions. Mark an LV open point and label which side the connection was made to. Set the north arrow inside the printed circle. The drawing prints into the work plan box on the form, and plans can be saved as templates.",
+        heading: 'LV Connection Record: dimensioned plan',
+        detail: 'Draw the conductor route on screen. Plans can be saved as templates.',
       },
     ],
   },
@@ -136,8 +111,8 @@ export const CHANGELOGS = [
     version: '2.29.0',
     changes: [
       {
-        heading: 'Electrical Distribution Record — Dimensioned Plan',
-        detail: "The Electrical Distribution Record has a new Dimensioned Plan step, before Comments. Draw the cable route in the plan box: the cables, ducts, boundaries, pits and poles, with dimensions and labels. Set the north arrow inside the printed circle, as on the Earth Test form. The drawing prints into the plan box on the form. Plans can be saved as templates for next time.",
+        heading: 'Electrical Distribution Record: dimensioned plan',
+        detail: 'Draw the cable route on screen. Plans can be saved as templates.',
       },
     ],
   },
@@ -145,8 +120,8 @@ export const CHANGELOGS = [
     version: '2.28.1',
     changes: [
       {
-        heading: 'Rectangles and circles can be made bigger',
-        detail: "Rectangles and circles on the plan used to stop growing at a fixed size, which was too small for large features. They can now be resized up to the full size of the plan box: a rectangle up to the full width and height, a circle up to the full height of the box. The dot is still a fixed size.",
+        heading: 'Larger shapes',
+        detail: 'Rectangles and circles can be resized up to the full plan box.',
       },
     ],
   },
@@ -154,8 +129,8 @@ export const CHANGELOGS = [
     version: '2.28.0',
     changes: [
       {
-        heading: 'Pole Record — Work Plan',
-        detail: "The Pole Record has a new Work Plan step, just before Work Description. Draw the job in the box on page 3 of the form: the old pole and its number, the new pole, the circuits between them, LV break positions and any kerb or road. Shapes, lines, dimensions and text work the same as on the Earth Test plan, and you can save a plan as a template for next time. There is no north arrow on this form, so none is drawn.",
+        heading: 'Pole Record: Work Plan',
+        detail: 'Draw the job on the form\'s work plan box, with a template option.',
       },
     ],
   },
@@ -163,8 +138,8 @@ export const CHANGELOGS = [
     version: '2.27.1',
     changes: [
       {
-        heading: 'Plan templates no longer save the north arrow',
-        detail: "Saved plan templates no longer keep the north arrow. When you load a template, north shows as not set, so you set it for each drawing. This also applies to templates saved before this update.",
+        heading: 'Templates no longer keep north',
+        detail: 'Loading a template leaves north unset, so you set it for each drawing.',
       },
     ],
   },
@@ -173,7 +148,7 @@ export const CHANGELOGS = [
     changes: [
       {
         heading: 'Plan templates',
-        detail: "You can now save a drawing as a named template, for example 'OH Tx earthing' or 'End of line earth', and load it later as a starting point to adjust. Tap 'Start from a template' on the Plan step, or the Templates button inside the plan editor. Loading a template replaces the current plan with a copy you can edit. Templates are kept separately for each form, and they're included in Backup & Restore.",
+        detail: 'Save a drawing under a name and load it later. Templates are per form and included in Backup & Restore.',
       },
     ],
   },
@@ -181,8 +156,8 @@ export const CHANGELOGS = [
     version: '2.26.0',
     changes: [
       {
-        heading: 'Draw the earth plan in the app',
-        detail: "The Earth Installation and Test Record now has a Plan step where you build the dimensioned plan on screen instead of drawing it by hand. Add rectangles, circles and dots in any colour and label them as whatever they are (pole, box, rod…), draw lines in any pattern, colour and thickness, add dimension lines between two points (aligned with the measured line, or strictly horizontal or vertical) with an adjustable offset, and place coloured text. Line and dimension labels follow the angle of their line. Taps snap to centres, line ends, rectangle corners and the midpoints of lines and edges. Pinch with two fingers to zoom in on the plan and move around it (or use the − / + / Fit bar), and the grid snap gets finer as you zoom. Choose where a shape's label sits (top, bottom, left, right or centre). Once you've drawn something the editor goes straight back to Select so you can adjust it immediately. Resize shapes by dragging the corner handle. Drag the north circle to point north. The finished plan is printed neatly into the plan box on the form.",
+        heading: 'Earth plan drawn in the app',
+        detail: 'Build the earth plan on screen with shapes, lines, dimensions and text. Pinch to zoom.',
       },
     ],
   },
@@ -190,8 +165,8 @@ export const CHANGELOGS = [
     version: '2.25.0',
     changes: [
       {
-        heading: 'New form: As-built Earth Installation and Test Record',
-        detail: "360S014EJ can now be filled out in the app. Tap it in Browse All Forms (or under any work type that lists it) and choose \"Fill Out Form\". It covers the test type, Earth 1 and Earth 2 results, conductor details, connection type, ground conditions, other services in the trench, and comments. Photos can be attached like on the other forms. The dimensioned plan is still drawn by hand on the printed form.",
+        heading: 'New form: Earth Installation and Test Record',
+        detail: '360S014EJ is now available. The plan is still drawn by hand on the printed form.',
       },
     ],
   },
@@ -199,8 +174,8 @@ export const CHANGELOGS = [
     version: '2.24.0',
     changes: [
       {
-        heading: 'Re-order photos before printing',
-        detail: "Each attached photo now shows its page number with small ‹ › buttons to move it earlier or later. Photos go into the PDF in the order shown, so you can fix the order without removing and re-adding them.",
+        heading: 'Reorder photos',
+        detail: 'Move photos earlier or later before printing.',
       },
     ],
   },
@@ -208,12 +183,12 @@ export const CHANGELOGS = [
     version: '2.23.0',
     changes: [
       {
-        heading: 'Back up and restore your data',
-        detail: "My Details (⚙️) now has a Backup & Restore section. \"Back up my data\" saves your drafts, projects and saved details (including your signature) into one file you can keep in Files, email to yourself, or move to a new device. \"Restore from backup\" loads that file back in — handy if you replace or reset an iPad. Restoring adds to what's already on the device and overwrites anything with the same name.",
+        heading: 'Backup & Restore',
+        detail: 'Back up drafts, projects and My Details to one file, and restore it on a new device.',
       },
       {
-        heading: 'Pole Record — \"Other\" pole type now selectable',
-        detail: "The Pole Record's pole type list was missing an \"Other\" option, so the \"Specify Type\" box could never appear. \"Other\" is now in the list, and whatever you type is printed on the form.",
+        heading: 'Pole Record: "Other" pole type',
+        detail: 'The "Other" pole type is selectable, and the text you enter prints on the form.',
       },
     ],
   },
@@ -221,8 +196,8 @@ export const CHANGELOGS = [
     version: '2.22.1',
     changes: [
       {
-        heading: 'Macrons (ā ē ī ō ū) now work in every form',
-        detail: "Typing a macron into any field — a street name like Māngere, a place like Ōtāhuhu, or a Māori word in the comments — used to stop the PDF from generating at all. All forms now handle macrons correctly, and they also appear properly in saved file names.",
+        heading: 'Macrons work everywhere',
+        detail: 'Māngere, Ōtāhuhu and other macron names now print in every form.',
       },
     ],
   },
@@ -230,8 +205,8 @@ export const CHANGELOGS = [
     version: '2.22.0',
     changes: [
       {
-        heading: 'New optional "Map Number" field',
-        detail: "You'll notice a new Map Number field on the job details step of every form. It's optional — fill it in if you use one, and leave it blank if you don't.",
+        heading: 'Optional Map Number',
+        detail: 'A Map Number field is on every job details step.',
       },
     ],
   },
@@ -239,12 +214,8 @@ export const CHANGELOGS = [
     version: '2.21.0',
     changes: [
       {
-        heading: "\"What's New\" no longer dumps the entire update history at once",
-        detail: "If the app's storage was ever cleared (or on a brand-new device), the app couldn't tell that apart from a fresh install — so it showed every update going all the way back to the very first release, one after another. It now recognises this case and quietly catches up in the background instead, so you'll only ever see genuinely new updates from that point forward.",
-      },
-      {
-        heading: '"Skip all" button on the What\'s New screen',
-        detail: "If several updates ever do pile up waiting to be seen (for example, if the app hasn't been opened in a while), a \"Skip all\" link now appears next to the page counter so you're not stuck tapping \"Next\" through each one.",
+        heading: 'Fewer "What\'s New" prompts',
+        detail: 'Devices with cleared storage no longer see the full history. Skip all is available when several updates are waiting.',
       },
     ],
   },
@@ -252,8 +223,8 @@ export const CHANGELOGS = [
     version: '2.20.6',
     changes: [
       {
-        heading: 'Faster PDF generation for forms with several photos attached',
-        detail: "Photos that were already correctly sized and oriented at the moment they were attached are now added straight into the PDF, instead of being processed a second time during generation. This speeds up generating any form with photos attached, especially several at once, with no change to how the photos look in the finished PDF. A backup process still handles the rare case where a photo couldn't be fully prepared when it was first attached.",
+        heading: 'Faster PDFs with photos',
+        detail: 'Photos are no longer reprocessed when a PDF is generated, so forms with several photos finish sooner.',
       },
     ],
   },
@@ -261,8 +232,8 @@ export const CHANGELOGS = [
     version: '2.20.5',
     changes: [
       {
-        heading: 'Photos attached to PDFs look slightly sharper',
-        detail: "Photos were being compressed twice — once when you attached them, and again while the PDF was being generated — and the second pass used a lower quality setting than the first, for no size benefit. That second pass is still needed (it's what keeps photos the right way up), but now keeps more of the original quality instead of needlessly softening an image that was already sized appropriately.",
+        heading: 'Sharper photos in PDFs',
+        detail: 'Photos keep more of their original quality.',
       },
     ],
   },
@@ -270,20 +241,12 @@ export const CHANGELOGS = [
     version: '2.20.4',
     changes: [
       {
-        heading: 'Completed forms no longer wrongly show "unsaved progress"',
-        detail: "On some devices, sharing or printing a finished PDF didn't properly mark the form as complete. Reopening that form afterwards could still show an \"unsaved progress found\" prompt even though it had already been finished and shared. This now clears correctly every time, on every device.",
+        heading: 'Completed forms clear correctly',
+        detail: 'A shared or printed form no longer shows "unsaved progress" when reopened.',
       },
       {
-        heading: 'HV Inspection Certificate — corrected tick placement for Performance Tests',
-        detail: 'A background fix ensures every row under Performance Tests lines up with the correct equipment column on the generated PDF.',
-      },
-      {
-        heading: 'HV Inspection Certificate — restoring unsaved progress returns to the right step',
-        detail: "If the app closed unexpectedly partway through an HV Inspection Certificate, restoring that progress could land you further back than necessary. It now returns you to the step you were actually on.",
-      },
-      {
-        heading: 'Background fixes',
-        detail: 'Added a safeguard so text typed into a field is not lost in the rare case where the screen changes at the exact moment you were typing.',
+        heading: 'HV Inspection fixes',
+        detail: 'Performance tick placement is corrected, and restoring progress returns you to the right step.',
       },
     ],
   },
@@ -291,28 +254,16 @@ export const CHANGELOGS = [
     version: '2.20.3',
     changes: [
       {
-        heading: 'Photos take up less space and save faster',
-        detail: 'Photos are now resized and compressed as soon as you attach them, instead of only when the PDF is generated. Saved drafts and background progress-saving with several photos attached are now much smaller and quicker to save.',
+        heading: 'Smaller, faster drafts',
+        detail: 'Photos are resized when attached, so drafts save faster and take less space.',
       },
       {
-        heading: 'Typing feels smoother on longer fields',
-        detail: 'Comments, work descriptions, and other free-text fields no longer cause a brief stutter on each keystroke — most noticeable on older tablets.',
+        heading: 'Smoother typing',
+        detail: 'Long text fields no longer stutter on older tablets.',
       },
       {
-        heading: 'PDF generation recovers automatically after a failure',
-        detail: 'If PDF generation ran into trouble in the background (most likely when processing a large batch of photos), every later attempt could get stuck until the app was fully reloaded. It now recovers on its own, and Retry works as expected.',
-      },
-      {
-        heading: '"Use my location" is more reliable when closing a form quickly',
-        detail: 'Looking up an address no longer keeps running, or tries to fill in fields, after the form has already been closed.',
-      },
-      {
-        heading: 'Save Draft always suggests an up-to-date name',
-        detail: 'The suggested draft name could occasionally be based on slightly outdated job details if they changed right as the Save Draft screen opened. It now always reflects the latest details.',
-      },
-      {
-        heading: 'Background fixes',
-        detail: 'Fixed a small memory leak that could occur after sharing a PDF by link. Fixed a leftover timer after every PDF generation. Corrected the internal logic behind the HV Inspection Certificate\'s shaded/not-applicable cells so it can no longer silently drift out of sync if the form is edited in the future.',
+        heading: 'PDF generation recovers',
+        detail: 'After a failure, Retry works without reloading the app.',
       },
     ],
   },
@@ -320,16 +271,12 @@ export const CHANGELOGS = [
     version: '2.20.2',
     changes: [
       {
-        heading: 'Pole Record — newly added conductor rows no longer disappear',
-        detail: 'After starting a conductor row (tapping Cu, Ali, or Manual) but before picking a specific size, tapping "+ Add Another Row" could make the brand new row vanish instead of appearing on screen. The new row now always shows up correctly.',
+        heading: 'Pole Record rows fixed',
+        detail: 'A new conductor row no longer disappears after you tap Cu, Ali or Manual.',
       },
       {
-        heading: 'App updates no longer reload the page twice',
-        detail: 'Tapping "Update now" on the update banner occasionally caused the app to refresh twice in quick succession. It now reloads once, as intended.',
-      },
-      {
-        heading: 'Removed the unused "Excel version" download links',
-        detail: 'A few forms showed a "Download Excel version" link that never worked, since no Excel files were ever provided alongside the PDFs. This option has been removed — every form here is a PDF.',
+        heading: 'Update banner reloads once',
+        detail: 'Tapping Update now refreshes the app once, not twice.',
       },
     ],
   },
@@ -337,8 +284,8 @@ export const CHANGELOGS = [
     version: '2.20.1',
     changes: [
       {
-        heading: 'Restoring unsaved progress no longer shows a blank screen',
-        detail: 'If a form crashed or was closed while sitting on the "Preview & Print" screen, restoring that progress previously jumped straight back to a blank preview with no PDF and no way forward except closing it and starting again. Restoring now returns you to the Photos step instead — tap "Preview Form" from there and the PDF generates correctly.',
+        heading: 'Restoring progress from Preview',
+        detail: 'Restoring from the Preview screen returns you to Photos, so you can tap Preview Form again.',
       },
     ],
   },
@@ -347,11 +294,11 @@ export const CHANGELOGS = [
     changes: [
       {
         heading: 'Pick up where you left off',
-        detail: 'If the app closes or crashes partway through filling out a form, reopening that form now offers to restore your progress — including any photos already attached — instead of making you start again. This is separate from named drafts and is cleared automatically once you generate and share the finished PDF.',
+        detail: 'If the app closes partway through a form, reopening it offers to restore your progress, including photos.',
       },
       {
-        heading: 'HV Inspection Certificate signatures are no longer lost from saved progress',
-        detail: 'The Team Lead and Field Switcher signatures on the Pre-Commissioning HV Inspection Certificate are now kept when you save a draft or when your progress is restored, instead of being dropped.',
+        heading: 'HV signatures kept in drafts',
+        detail: 'Team Lead and Field Switcher signatures are saved and restored.',
       },
     ],
   },
@@ -359,8 +306,8 @@ export const CHANGELOGS = [
     version: '2.19.1',
     changes: [
       {
-        heading: 'Distribution Transformer Certificate — label corrected',
-        detail: 'The missing-fields warning on the Distribution Transformer Commissioning Certificate now correctly reads "PCo W/O No." to match the rest of the app — it previously said "SAP W/O No." by mistake.',
+        heading: 'Distribution Transformer label',
+        detail: 'The missing-fields warning now says "PCo W/O No.".',
       },
     ],
   },
@@ -368,8 +315,8 @@ export const CHANGELOGS = [
     version: '2.19.0',
     changes: [
       {
-        heading: 'PDF generation no longer freezes the app',
-        detail: 'Generating a filled PDF — especially one with several photos attached — used to briefly freeze the screen while it worked. PDF generation now happens in the background, so the app stays responsive the whole time.',
+        heading: 'PDFs no longer freeze the app',
+        detail: 'PDF generation runs in the background, so the screen stays responsive.',
       },
     ],
   },
@@ -377,8 +324,8 @@ export const CHANGELOGS = [
     version: '2.18.3',
     changes: [
       {
-        heading: 'Photos are attached in the order you select them',
-        detail: 'When adding several photos at once, they could occasionally end up in a different order in the finished PDF than the order you picked them in (larger photos sometimes finished loading after smaller ones). Photos are now always appended in the exact order you selected them.',
+        heading: 'Photos stay in order',
+        detail: 'Photos appear in the PDF in the order you selected them.',
       },
     ],
   },
@@ -386,12 +333,8 @@ export const CHANGELOGS = [
     version: '2.18.2',
     changes: [
       {
-        heading: 'GPS buttons time out less often in weak-signal areas',
-        detail: 'The "Use my GPS" and "Use my location" buttons were requesting a brand-new satellite fix on every tap, which could take longer than 15 seconds in rural areas or under cover. They now accept a location reading from the last 30 seconds, which is still accurate enough for field records and far less likely to time out.',
-      },
-      {
-        heading: 'Signature drawing runs slightly faster',
-        detail: 'The calculation that trims blank space around a saved signature has been sped up under the hood. Not something you\'ll see directly, but one less thing for the app to do after every signature.',
+        heading: 'GPS fewer timeouts',
+        detail: 'GPS buttons accept a location from the last 30 seconds, so weak-signal areas time out less.',
       },
     ],
   },
@@ -399,16 +342,16 @@ export const CHANGELOGS = [
     version: '2.18.1',
     changes: [
       {
-        heading: 'Saved drafts no longer drop photos beyond the fifth',
-        detail: 'Saving a named draft, or letting the app auto-save your progress in the background, was still silently keeping only the first 5 photos — even though full photo sets have been supported everywhere else since 2.17.0. All attached photos are now kept in both cases.',
+        heading: 'All photos kept in drafts',
+        detail: 'Drafts keep every photo, not just the first five.',
       },
       {
-        heading: 'Loading a draft now always replaces your current photos',
-        detail: 'If you had photos attached to a form and then loaded a different saved draft with fewer (or no) photos, the old photos could be left in place instead of being replaced. Loading a draft now always shows exactly the photos saved with it.',
+        heading: 'Loading a draft replaces photos',
+        detail: 'Loading a draft always shows exactly the photos saved with it.',
       },
       {
-        heading: 'Earth resistance tick on Distribution Transformer Commissioning Certificate',
-        detail: 'A reading exactly at the limit (e.g. exactly 25 Ω) now correctly shows a green tick, matching the "25 Ω or less" standard, instead of only ticking for readings strictly below it.',
+        heading: 'Earth tick at the limit',
+        detail: 'An exact 25 Ω reading on the Distribution Transformer certificate now ticks.',
       },
     ],
   },
@@ -416,8 +359,8 @@ export const CHANGELOGS = [
     version: '2.18.0',
     changes: [
       {
-        heading: 'GPS button for Pole Record co-ordinates',
-        detail: 'The GPS Co-ordinates section on the Pole Record wizard now has a "Use my GPS" button. Tap it to read your device\'s location and automatically fill in North, East, and Altitude — no more typing co-ordinates in by hand or switching to a separate map app.',
+        heading: 'GPS for Pole Record co-ordinates',
+        detail: 'Use my GPS fills in North, East and Altitude.',
       },
     ],
   },
@@ -425,20 +368,16 @@ export const CHANGELOGS = [
     version: '2.17.0',
     changes: [
       {
-        heading: 'Add Row buttons no longer vanish when all rows are deleted',
-        detail: 'In the Pole Record and Zone Substation wizards, tapping × on every conductor, crossarm, or equipment row permanently hid the "Add Row" button, locking the form. The button now always stays visible below the row list.',
+        heading: 'Add Row stays visible',
+        detail: 'Add Row no longer disappears after you delete every row.',
       },
       {
-        heading: 'Save Draft button no longer gets stuck on "Saving…"',
-        detail: 'After a successful save, the Save Draft button would stay disabled and show "Saving…" for the rest of the session. It now resets correctly after every save.',
+        heading: 'Save Draft resets',
+        detail: 'Save Draft no longer gets stuck on "Saving…".',
       },
       {
-        heading: 'All attached photos are now saved in drafts',
-        detail: 'Drafts and autosaves were silently dropping any photos beyond the fifth. All photos are now saved in full — the storage system (IndexedDB) was specifically chosen to handle large photo sets without any limit.',
-      },
-      {
-        heading: 'Background fixes',
-        detail: 'Fixed a timer left running in the background after every PDF generation. Fixed an issue where HV Inspection Certificate signature data could be stored unnecessarily in draft saves.',
+        heading: 'All photos saved in drafts',
+        detail: 'Drafts and autosaves keep every attached photo.',
       },
     ],
   },
@@ -446,8 +385,8 @@ export const CHANGELOGS = [
     version: '2.16.0',
     changes: [
       {
-        heading: 'Tap the version number to see the full changelog',
-        detail: 'The small "v2.x.x" label in the bottom-right corner is now tappable and opens the complete history of every update, not just the latest one — handy for checking what changed a few versions back.',
+        heading: 'Full changelog',
+        detail: 'Tap the version number to see every update.',
       },
     ],
   },
@@ -455,8 +394,8 @@ export const CHANGELOGS = [
     version: '2.15.0',
     changes: [
       {
-        heading: 'Browse All Forms — collapsible categories',
-        detail: 'Pre-Work, Test & Verification, As-Built Forms, and Commissioning & Test Certificates now collapse under tappable headers and start closed, so the page is much shorter to scroll through. Searching by name or ID automatically opens any category with matching results.',
+        heading: 'Collapsible Browse All Forms',
+        detail: 'Categories start closed. Searching opens any with matches.',
       },
     ],
   },
@@ -464,12 +403,12 @@ export const CHANGELOGS = [
     version: '2.14.0',
     changes: [
       {
-        heading: 'Signature now visible in My Details',
-        detail: 'Opening My Details (⚙️) previously showed an empty box even after you\'d already saved a signature. Your saved signature now displays there properly, so you can check it at a glance and only need to draw a new one if you want to change it.',
+        heading: 'Signature shows in My Details',
+        detail: 'Your saved signature displays when you open My Details.',
       },
       {
-        heading: 'Choose your default screen',
-        detail: 'My Details (⚙️) now has a "Default View on Open" option, so you can choose whether the app starts on "By Work Type" or "Browse All Forms" each time you open it.',
+        heading: 'Default view',
+        detail: 'Choose whether the app opens on By Work Type or Browse All Forms.',
       },
     ],
   },
@@ -477,48 +416,28 @@ export const CHANGELOGS = [
     version: '2.13.0',
     changes: [
       {
-        heading: 'Offline indicator',
-        detail: 'A bar now appears at the bottom of the screen whenever your device loses its connection — "📵 You\'re offline — forms and drafts work, but sharing requires a connection." It disappears automatically when you\'re back online.',
+        heading: 'Offline support',
+        detail: 'Forms, drafts and previews work offline. An offline bar shows when the connection drops.',
       },
       {
-        heading: 'Blank PDFs open instantly on repeat access',
-        detail: 'Form PDFs are now served from the cache immediately on every open after the first — no more waiting for a network response before the PDF appears. A background fetch keeps the cached copy fresh for next time.',
+        heading: 'Updates need your say-so',
+        detail: 'A new version installs only when you tap Update now.',
       },
       {
-        heading: 'App updates are now user-controlled',
-        detail: 'Previously, a new app version would install and reload automatically. Now the "Update available" banner appears and nothing happens until you tap "Update now". No more surprise reloads while filling out a form.',
+        heading: 'Drafts stored safely',
+        detail: 'Drafts and photos are kept in IndexedDB, so they are not lost when storage is tight.',
       },
       {
-        heading: 'Offline use is fully reliable',
-        detail: 'The service worker has been rebuilt using Workbox. All app code — including the PDF renderer (pdfjs) — is now properly pre-cached when you first load the app. Forms, wizards, and PDF previews all work the same with no internet connection.',
+        heading: 'Numeric keypad on number fields',
+        detail: 'Number fields open the number pad on iOS and Android.',
       },
       {
-        heading: 'Draft photos can no longer be lost',
-        detail: 'Draft and project storage has been moved from localStorage to IndexedDB. Photo data in drafts is no longer at risk of being silently deleted by the browser when device storage gets tight.',
+        heading: 'Smoother previews and faster start',
+        detail: 'Previews keep a steady scroll position, and the app loads in smaller pieces.',
       },
       {
-        heading: 'Number fields show the number pad on mobile',
-        detail: 'All numeric input fields (cable lengths, fuse sizes, number of conductors, etc.) now bring up the numeric keypad on iOS and Android instead of the full keyboard. Letters are also blocked so you can\'t accidentally type text into a numbers-only field.',
-      },
-      {
-        heading: '"Use my location" button improved',
-        detail: 'The GPS button now shows "⏳ Please wait…" and disables itself for 2 seconds after any error, preventing accidental rapid re-taps that could temporarily block location lookups. The error message for Android has also been updated to work for any browser, not just Chrome.',
-      },
-      {
-        heading: 'PDF preview no longer jumps when loading',
-        detail: 'Multi-page form previews previously caused a jarring snap — the preview area would collapse and then suddenly expand as each page finished rendering. The correct height is now reserved upfront so the scroll position stays stable throughout.',
-      },
-      {
-        heading: 'Signature feels smoother on iPads',
-        detail: 'The signature bounding-box calculation was rewritten to be significantly faster. On retina/HiDPI iPads the old code was scanning ~240,000 pixels on every stroke end, causing a brief stutter. The new code typically exits after scanning ~10–20 rows.',
-      },
-      {
-        heading: 'Accidental zoom disabled on field devices',
-        detail: 'Pinch-to-zoom is now disabled. On iPads and Android tablets, accidentally zooming the form while tapping or swiping between fields is no longer possible.',
-      },
-      {
-        heading: 'Faster startup',
-        detail: 'The app bundle is now split into separate chunks — React, pdf-lib, pdfjs, and each wizard\'s PDF generator only load when needed. First load and navigation are noticeably quicker on slower mobile connections.',
+        heading: 'No accidental zoom',
+        detail: 'Pinch-to-zoom is disabled on field devices.',
       },
     ],
   },
@@ -527,19 +446,19 @@ export const CHANGELOGS = [
     changes: [
       {
         heading: 'User Settings',
-        detail: 'Your name, contractor, competency cert number, and signature are now saved once in a dedicated settings page (gear icon ⚙️ in the header). Every form wizard picks these up automatically — no more filling them in each time.',
+        detail: 'Your name, contractor, cert number and signature are saved once and filled in automatically.',
       },
       {
-        heading: 'Project & Draft system',
-        detail: 'Create and save named projects (job number, W/O, project name) and load them into any form in one tap. Save named drafts mid-fill and reload them later — useful for pre-filling a batch of forms before heading to site.',
+        heading: 'Projects and named drafts',
+        detail: 'Save job details as a project, and save named drafts to load later.',
       },
       {
-        heading: 'HV Inspection Certificate — 220F028A',
-        detail: 'New wizard for the Pre-Commissioning HV Inspection Certificate. Select the equipment types being commissioned and each gets its own check step showing only the applicable rows. Tick All button covers Visual, Operation, Performance, QA, and Documentation in one tap.',
+        heading: 'HV Inspection Certificate (220F028A)',
+        detail: 'New wizard with a Tick All button per section.',
       },
       {
-        heading: 'Improved form navigation',
-        detail: 'The 💾 Save Draft button now appears in the nav bar on every step of every wizard — no need to go back to step 1 to save. The Load Draft button on step 1 opens straight to your saved drafts list.',
+        heading: 'Save Draft in every step',
+        detail: 'The Save Draft button is in the nav bar on every step.',
       },
     ],
   },
@@ -548,19 +467,15 @@ export const CHANGELOGS = [
     changes: [
       {
         heading: 'Save for later',
-        detail: 'A new 💾 button in the bottom nav bar lets you save your progress and close a wizard mid-fill. When you reopen the form, a prompt appears asking if you want to continue where you left off or start fresh. Perfect for filling in what you know beforehand and adding photos on the day.',
+        detail: 'Save progress and close a form mid-fill. Reopening it offers to continue.',
       },
       {
         heading: 'Smarter file names',
-        detail: 'Saved PDFs now include the site-specific ID in the filename. Pole Record uses the Old Pole ID, Transformer uses the Transformer Site ID, LV Connection uses the ICP Number, Elec Equipment uses the Equipment ID, LV Box uses the Box Equipment ID, and Zone Sub uses the Substation name.',
+        detail: 'PDFs are named using the site ID, such as the old pole ID or ICP number.',
       },
       {
-        heading: 'Smaller PDF file sizes',
-        detail: 'Photos attached to PDFs are now compressed more aggressively — capped at 1600px on the longest edge and exported at 75% quality instead of 92%. A typical 4-photo PDF is now 60–80% smaller.',
-      },
-      {
-        heading: 'Bug fixes',
-        detail: 'Fixed a crash when generating any PDF where a signature had been drawn. Fixed automatic app updates not applying on iOS. Fixed the signature being accidentally saved into the draft cache. Fixed a memory leak when previewing PDFs multiple times in one session.',
+        heading: 'Smaller PDFs',
+        detail: 'Photos are compressed further, so a typical four-photo PDF is much smaller.',
       },
     ],
   },
@@ -569,27 +484,15 @@ export const CHANGELOGS = [
     changes: [
       {
         heading: 'Use my location',
-        detail: 'A new button on the job details step automatically fills in your street address, city, and district using your device GPS.',
+        detail: 'Fills in street address, city and district from GPS.',
       },
       {
-        heading: 'Contractor, name & signature remembered',
-        detail: 'Your contractor name, your name, and your signature are saved on the device and pre-filled every time you open a form. Date Work Completed also defaults to today.',
+        heading: 'Remembered details',
+        detail: 'Contractor, name and signature are pre-filled. Date Work Completed defaults to today.',
       },
       {
-        heading: 'Pole Record — conductor quick-pick',
-        detail: 'Choose Cu or Ali to fast-select conductors. Cu shows common sizes and sets HDCu automatically. Ali lists all named NZ conductors alphabetically with the seven most common pinned at the top. Both ask Bare or PVC to finish. Manual entry is still available.',
-      },
-      {
-        heading: 'Pole Record — crossarm improvements',
-        detail: 'End Size is now a labelled dropdown (A, B, D, Z) with dimensions shown. Arms selects Single or Double. Length and number of wires accept numbers only. End size, length, arms and material are grouped together.',
-      },
-      {
-        heading: 'Signature improvements',
-        detail: 'The signature pad now uses velocity-based stroke thickness for a natural pen feel. Dots and short taps are drawn correctly. Stroke smoothing improved.',
-      },
-      {
-        heading: 'Unified app colour',
-        detail: 'All six wizards now use the same indigo colour scheme. PDF overlay text and the signature ink are also matched so the whole document looks like it was filled with the same pen.',
+        heading: 'Conductor quick-pick',
+        detail: 'Choose Cu or Ali for common sizes, or enter manually.',
       },
     ],
   },
@@ -598,15 +501,11 @@ export const CHANGELOGS = [
     changes: [
       {
         heading: 'Photo attachments',
-        detail: 'All six wizards now have a Photos step before the preview. Attach job site photos and they will be appended to the PDF — one per page, correctly oriented.',
+        detail: 'Every wizard has a Photos step. Each photo prints on its own page.',
       },
       {
-        heading: 'Pole Record — smarter conductor & crossarm entry',
-        detail: 'Level, Existing/New, Material, and Insulation Type in the Conductors section are now dropdowns. Level auto-fills to match the row number. Material options are HDCu, ACSR, AAC, AAAC, and ABC.',
-      },
-      {
-        heading: 'Pole Record — crossarm dropdowns',
-        detail: 'Rated Voltage, Number of Arms, and Arm Material in the Crossarms section are now dropdowns. Arm Material shows Timber, Steel, or Composite and writes the correct T/S/C code to the form.',
+        heading: 'Dropdowns on the Pole Record',
+        detail: 'Conductor and crossarm fields are dropdowns.',
       },
     ],
   },
@@ -615,25 +514,16 @@ export const CHANGELOGS = [
     changes: [
       {
         heading: 'Smart file names',
-        detail: 'Saved PDFs are now named using your Project Name and NP Job Number — e.g. "Pyes Pa Blitz - TC1234567 - Pole Record.pdf"',
+        detail: 'PDFs are named with the project name and NP job number.',
       },
       {
         heading: 'Draft autosave',
-        detail: 'If you accidentally close a wizard mid-fill, your work is saved. A "Restore draft" banner appears when you reopen the form.',
-      },
-      {
-        heading: 'Fixed bug on iPad',
-        detail: 'Saving a PDF to iPad was creating an unwanted sidecar text file. This has been fixed.',
-      },
-      {
-        heading: 'Changed print handling for blank PDF',
-        detail: "The native PDF viewer in Safari on iOS wasn't handling blank form PDFs correctly. Changed to use the same custom handler as the wizard system, which should handle printing far better.",
+        detail: 'If a wizard closes mid-fill, a Restore draft banner appears on reopen.',
       },
       {
         heading: 'Update notices',
-        detail: "You'll now see a summary of what's changed when the app updates — like this one.",
+        detail: 'A summary of changes appears after each update.',
       },
     ],
   },
 ]
-
