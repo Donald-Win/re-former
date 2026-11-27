@@ -2,3 +2,4 @@ node_modules/
 dist/
 .DS_Store
 *.local
+nz-quasigeoid-2016.csv

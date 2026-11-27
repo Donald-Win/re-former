@@ -1,102 +1,59 @@
 /**
- * re-former Service Worker — Workbox edition
+ * re-former Service Worker — Workbox.
  *
- * This file is a TEMPLATE. vite-plugin-pwa injects the full precache
- * manifest (all hashed JS/CSS/HTML/asset filenames from the Vite build)
- * into self.__WB_MANIFEST at build time.
+ * This is a template. vite-plugin-pwa injects the precache manifest (every
+ * hashed JS/CSS/HTML file, the form PDFs, fonts and the geoid grid) into
+ * self.__WB_MANIFEST at build time.
  *
- * The output sw.js in dist/ is a fully-bundled, single-file script —
- * no ES-module issues at runtime.
- *
- * Update flow (manual, user-controlled):
- *   1. New SW installs → stays in "waiting" state (no auto-skipWaiting)
- *   2. App.jsx detects reg.waiting → shows "Update available" banner
- *   3. User clicks "Update now"
- *   4. App.jsx posts { type: 'SKIP_WAITING' } to reg.waiting
- *   5. SW calls self.skipWaiting() → activates
- *   6. controllerchange fires → main.jsx reloads the page
+ * Update flow (user-controlled):
+ *   1. A new SW installs and waits (no automatic skipWaiting)
+ *   2. App.jsx shows the "Update available" banner
+ *   3. The user taps "Update now", which posts SKIP_WAITING
+ *   4. The SW activates, and main.jsx reloads the page
  */
 
-import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching'
-import { registerRoute } from 'workbox-routing'
-import { NetworkFirst, StaleWhileRevalidate } from 'workbox-strategies'
-import { ExpirationPlugin } from 'workbox-expiration'
+import { precacheAndRoute, cleanupOutdatedCaches, createHandlerBoundToURL } from 'workbox-precaching'
+import { registerRoute, NavigationRoute } from 'workbox-routing'
+import { NetworkFirst } from 'workbox-strategies'
 import { clientsClaim } from 'workbox-core'
 
-// ── Take control of all uncontrolled clients on activation ────────────────────
-// (First-visit users get the SW immediately without a second page load.)
 clientsClaim()
 
-// ── Precache all Vite build output (hashed JS, CSS, HTML, assets) ─────────────
-// self.__WB_MANIFEST is injected by vite-plugin-pwa at build time.
-// This is the core fix: every hashed filename is now known to the SW
-// and pre-fetched during installation, guaranteeing offline availability.
+// Precache the whole build, including form PDFs, fonts and the geoid grid.
 precacheAndRoute(self.__WB_MANIFEST)
-
-// Remove stale Workbox precache caches from previous builds
 cleanupOutdatedCaches()
 
-// ── Clean up old manual caches from the pre-Workbox SW versions ───────────────
-// Old caches were named e.g. "re-former-v2.12.1-static", "re-former-v2.12.1-pdfs".
-// These will never be cleaned by Workbox, so we do it ourselves on activate.
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((cacheNames) =>
-      Promise.all(
-        cacheNames
-          .filter((name) => /^re-former-v\d/.test(name))
-          .map((name) => {
-            console.log('[re-former SW] Deleting old cache:', name)
-            return caches.delete(name)
-          })
-      )
-    )
-  )
-})
+// Offline navigation. Any page request (for example, the app opened from the
+// home screen) is served the precached app shell.
+try {
+  const shellUrl = new URL('index.html', self.registration.scope).pathname
+  registerRoute(new NavigationRoute(createHandlerBoundToURL(shellUrl)))
+} catch (err) {
+  console.warn('[re-former SW] app shell is not precached; offline navigation disabled', err)
+}
 
-// ── Runtime: PDFs — stale-while-revalidate ────────────────────────────────────
-// CHANGED from NetworkFirst to StaleWhileRevalidate.
-//
-// WHY: NetworkFirst tries the network before serving from cache. In weak 3G
-// areas the network attempt can take several seconds before timing out and
-// falling back to the cache — the app appears hung while a PDF is "opening".
-//
-// StaleWhileRevalidate serves the cached PDF INSTANTLY on every subsequent
-// open, then fires a background fetch to refresh the cache entry silently.
-// The user gets immediate response; the cache stays fresh for next time.
-//
-// Trade-off: a field tech who opens a form immediately after a PDF is updated
-// server-side will see the old version on that first open, and get the new
-// version the next time they open it (once the background refresh completes).
-// For Powerco form PDFs — which change infrequently and where responsiveness
-// matters more than instant propagation — this is the correct trade-off.
-registerRoute(
-  ({ url }) => /\/forms\/.*\.pdf$/i.test(url.pathname),
-  new StaleWhileRevalidate({
-    cacheName: 're-former-pdfs',
-    plugins: [
-      new ExpirationPlugin({
-        maxEntries: 50,
-        maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
-      }),
-    ],
-  })
-)
-
-// ── Runtime: manifest.json — network-first ────────────────────────────────────
-// Chrome re-checks the manifest for PWA install eligibility on every visit.
-// Network-first guarantees it always sees the freshest version.
-// This stays on NetworkFirst intentionally — the manifest is tiny (< 1 KB)
-// and incorrect PWA metadata (icon, theme colour) is confusing to users.
+// manifest.json: network first, so install metadata stays current.
 registerRoute(
   ({ url }) => url.pathname.endsWith('/manifest.json'),
   new NetworkFirst({ cacheName: 're-former-manifest' })
 )
 
-// ── Message handler ────────────────────────────────────────────────────────────
-// App.jsx's update banner calls:
-//   reg.waiting.postMessage('SKIP_WAITING')       → triggers update
-//   reg.waiting.postMessage('CHECK_UPDATE')       → triggers registration.update()
+// Remove caches from earlier SW versions. Form PDFs were once cached at runtime
+// under 're-former-pdfs'; they are now precached.
+const LEGACY_CACHE = /^(re-former-v\d|re-former-pdfs$)/
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((names) =>
+      Promise.all(
+        names
+          .filter((name) => LEGACY_CACHE.test(name))
+          .map((name) => caches.delete(name))
+      )
+    )
+  )
+})
+
+// App.jsx posts 'SKIP_WAITING' (apply update) or 'CHECK_UPDATE' (check now).
 self.addEventListener('message', (event) => {
   const msg = event.data?.type ?? event.data
   if (msg === 'SKIP_WAITING') self.skipWaiting()

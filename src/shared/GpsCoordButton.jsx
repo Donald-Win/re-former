@@ -1,70 +1,86 @@
 /**
  * GpsCoordButton
  *
- * A button that reads the device's GPS position and fills in NZTM2000
- * North / East co-ordinates (plus Altitude, when the device reports one) —
- * for use in the "GPS Co-ordinates" section of the Pole Record wizard (and
- * any future wizard step that asks for NZTM North/East rather than a
- * street address).
+ * Reads the device GPS and fills North / East (NZTM2000) and Altitude
+ * (height above sea level, in metres) for the Pole Record "GPS Co-ordinates" section.
  *
- * Unlike GpsLocationButton (which reverse-geocodes a GPS fix to a street
- * address via Nominatim), this button does a local WGS84 → NZTM2000
- * conversion (see src/shared/nztm.js) and makes no network request — it
- * works fully offline once the device has a GPS fix.
+ * North / East: local WGS84 → NZTM2000 conversion (src/shared/nztm.js).
+ * Altitude:     GPS height minus the NZGeoid2016 undulation (src/shared/geoid.js).
+ *               If the device gives no height, or the grid is unavailable, the
+ *               altitude is left for manual entry and a note explains why.
  *
- * Rate-limit / rapid-retap protection mirrors GpsLocationButton: a strict
- * 2-second cooldown is applied after any error, during which the button is
- * disabled and shows a "Please wait…" label.
- *
- * maximumAge
- * ──────────
- * getCurrentPosition is called with maximumAge: 30000 (30 seconds) rather
- * than 0. Requesting a brand-new fix on every tap forces the device's GPS
- * hardware to reacquire a satellite lock from cold, which in rural or
- * low-signal areas frequently exceeds the 15-second timeout below and
- * surfaces as a spurious TIMEOUT error. Accepting a fix up to 30 seconds
- * old lets the OS return an already-locked, still field-accurate position
- * instantly in the common case, while still being fresh enough for as-built
- * pole co-ordinates.
+ * No network request is made, so this works offline.
+ * A 2-second cooldown follows any error to avoid rapid re-taps.
+ * maximumAge (30 s) lets the OS reuse a recent lock instead of reacquiring
+ * satellites, which times out often in rural areas.
  *
  * Props:
  *   onCoords(fields) — called with { gpsNorth, gpsEast, altitude? }.
- *                      `altitude` is only included when the device reports
- *                      one, so a caller spreading this into existing form
- *                      state never blanks out a value the user typed in
- *                      manually.
+ *                      `altitude` is only included when calculated, so existing
+ *                      typed values are never blanked.
  *   accent           — hex colour for the button border/text
  */
 import { useState, useRef, useEffect } from 'react'
 import { latLonToNztm } from './nztm'
+import { heightAboveSeaLevel } from './geoid'
 
 const COOLDOWN_MS = 2000
 
 export function GpsCoordButton({ onCoords, accent = '#6366f1' }) {
-  const [status,     setStatus]     = useState('idle') // 'idle' | 'locating' | 'error'
-  const [errorMsg,   setErrorMsg]   = useState('')
+  const [status, setStatus]         = useState('idle') // idle | locating | error
+  const [errorMsg, setErrorMsg]     = useState('')
+  const [altNote, setAltNote]       = useState('')
   const [isCooldown, setIsCooldown] = useState(false)
 
-  // Holds the cooldown timer so we can clear it on unmount
   const cooldownRef = useRef(null)
+  const mountedRef  = useRef(true)
 
   useEffect(() => {
+    mountedRef.current = true
     return () => {
+      mountedRef.current = false
       if (cooldownRef.current) clearTimeout(cooldownRef.current)
     }
   }, [])
 
   const enterError = (msg) => {
+    if (!mountedRef.current) return
     setStatus('error')
     setErrorMsg(msg)
-
     if (cooldownRef.current) clearTimeout(cooldownRef.current)
-
     setIsCooldown(true)
     cooldownRef.current = setTimeout(() => {
-      setIsCooldown(false)
+      if (mountedRef.current) setIsCooldown(false)
       cooldownRef.current = null
     }, COOLDOWN_MS)
+  }
+
+  const handleFix = async (pos) => {
+    const { latitude, longitude, altitude } = pos.coords
+    try {
+      const { northing, easting } = latLonToNztm(latitude, longitude)
+      const fields = { gpsNorth: String(northing), gpsEast: String(easting) }
+
+      let note = ''
+      if (altitude === null || altitude === undefined) {
+        note = 'Your device gave no height reading, so altitude was not filled. Enter it by hand.'
+      } else {
+        const aboveSea = await heightAboveSeaLevel(altitude, latitude, longitude)
+        if (aboveSea === null) {
+          note = 'Altitude could not be calculated (geoid grid unavailable, or outside NZ). Enter it by hand.'
+        } else {
+          fields.altitude = `${Math.round(aboveSea)}m`
+        }
+      }
+
+      if (!mountedRef.current) return
+      setAltNote(note)
+      onCoords(fields)
+      setStatus('idle')
+    } catch (err) {
+      console.error('GpsCoordButton: NZTM conversion failed', err)
+      enterError('Could not calculate co-ordinates. Try again.')
+    }
   }
 
   const handlePress = () => {
@@ -77,29 +93,11 @@ export function GpsCoordButton({ onCoords, accent = '#6366f1' }) {
 
     setStatus('locating')
     setErrorMsg('')
+    setAltNote('')
 
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const { latitude, longitude, altitude } = pos.coords
-        try {
-          const { northing, easting } = latLonToNztm(latitude, longitude)
-          const hasAltitude = altitude !== null && altitude !== undefined
-
-          onCoords({
-            gpsNorth: String(northing),
-            gpsEast:  String(easting),
-            // Only included when the device actually reports one — many
-            // phones/tablets return null for altitude without a strong fix.
-            ...(hasAltitude ? { altitude: `${Math.round(altitude)}m` } : {}),
-          })
-          setStatus('idle')
-        } catch (err) {
-          console.error('GpsCoordButton: NZTM conversion failed', err)
-          enterError('Could not calculate co-ordinates. Try again.')
-        }
-      },
+      handleFix,
       (err) => {
-        // Mirrors GpsLocationButton's error handling for consistency.
         if (err.code === err.PERMISSION_DENIED) {
           const isInsecure = location.protocol !== 'https:' && location.hostname !== 'localhost'
           if (isInsecure) {
@@ -128,7 +126,6 @@ export function GpsCoordButton({ onCoords, accent = '#6366f1' }) {
   }
 
   const disabled = status === 'locating' || isCooldown
-
   const label = status === 'locating' ? '📡 Getting GPS fix…'
               : isCooldown            ? '⏳ Please wait…'
               : '📍 Use my GPS for North / East'
@@ -168,12 +165,23 @@ export function GpsCoordButton({ onCoords, accent = '#6366f1' }) {
           {errorMsg}
         </div>
       )}
+      {altNote && (
+        <div style={{
+          marginTop: 6,
+          padding: '8px 12px',
+          background: '#fffbeb',
+          border: '1px solid #fcd34d',
+          borderRadius: 6,
+          fontSize: 12,
+          color: '#92400e',
+        }}>
+          {altNote}
+        </div>
+      )}
       <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 6, lineHeight: 1.4 }}>
-        Fills North / East from your device's GPS, converted to NZTM2000. Works offline.
-        {' '}Height is filled too when your device reports one. It is GPS height above the
-        reference ellipsoid, not height above sea level, so check it before relying on it.
+        Fills North / East (NZTM2000). Altitude is height above sea level, calculated from the
+        device's GPS height using the NZ geoid model. Works offline.
       </div>
     </div>
   )
 }
-

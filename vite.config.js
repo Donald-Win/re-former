@@ -1,17 +1,13 @@
 /**
  * vite.config.js — single config for all deployment targets.
  *
- * Base path
- * ─────────
- * Controlled by the BASE_PATH environment variable at build time:
- *
- *   GitHub Pages (default):  base = '/re-former/'   (no env var needed)
+ * Base path (BASE_PATH env var at build time):
+ *   GitHub Pages (default):  '/re-former/'
  *   Netlify:                 BASE_PATH=/ npm run build
  *
- * The netlify.toml build command sets BASE_PATH=/ so the Netlify build
- * gets base: '/' while local dev and GitHub Pages CI continue to use the
- * '/re-former/' default.  vite.config.netlify.js is no longer needed and
- * can be deleted.
+ * Offline: the service worker precaches everything in dist/, including the
+ * form PDFs in public/forms, the fonts, and the geoid grid. The app therefore
+ * works fully offline after one online visit.
  */
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
@@ -26,29 +22,20 @@ export default defineConfig({
     tailwindcss(),
 
     VitePWA({
-      // ── Strategy: injectManifest ─────────────────────────────────────────
-      // We provide our own SW template (src/sw.js).
-      // The plugin bundles it via Vite/Rollup and injects the full list of
-      // hashed output filenames into self.__WB_MANIFEST at build time.
       strategies: 'injectManifest',
-      srcDir: 'src',       // location of our SW template
-      filename: 'sw.js',   // output filename — registered as <base>sw.js
+      srcDir: 'src',
+      filename: 'sw.js',
 
-      // ── Registration ─────────────────────────────────────────────────────
-      // main.jsx handles SW registration manually.
       registerType: 'prompt',
       injectRegister: false,
 
-      // ── Manifest ─────────────────────────────────────────────────────────
-      // We have our own public/manifest.json — don't generate or overwrite it.
       manifest: false,
 
-      // ── Precache glob config ──────────────────────────────────────────────
       injectManifest: {
-        // ttf: the Unicode PDF font (public/fonts) must be precached for offline PDF generation.
-        globPatterns: ['**/*.{js,mjs,css,html,ico,png,svg,woff2,ttf}'],
-        // Form PDFs are served by the NetworkFirst runtime cache in sw.js.
-        globIgnores: ['**/forms/**'],
+        // Everything the app needs offline. Form PDFs are .pdf or .PDF.
+        globPatterns: ['**/*.{js,mjs,css,html,ico,png,svg,woff2,ttf,json,pdf,PDF}'],
+        // The largest form PDFs and the geoid grid exceed the 2 MB default.
+        maximumFileSizeToCacheInBytes: 20 * 1024 * 1024,
       },
 
       devOptions: { enabled: false },
@@ -57,44 +44,21 @@ export default defineConfig({
 
   base,
 
-  // ── Unit tests (npm test) ───────────────────────────────────────────────
-  // Plain Node environment — the tests cover pure logic only (range limits,
-  // coordinate conversion, filename building, the declarative PDF renderer).
   test: {
     environment: 'node',
     include: ['src/**/*.test.js'],
   },
 
-  // ── Web Worker output format ────────────────────────────────────────────
-  // pdfGen.worker.js (see src/workers/pdfGen.worker.js) uses dynamic
-  // import() per PDF generator so each generator stays its own lazy-loaded
-  // chunk instead of being bundled entirely into the worker file. Rollup
-  // can only code-split when the worker's OWN output format supports it —
-  // Vite's default worker format is 'iife', which does NOT support
-  // code-splitting and fails the production build with:
-  //   "Invalid value 'iife' for option 'worker.format' - UMD and IIFE
-  //   output formats are not supported for code-splitting builds."
-  // This only surfaces in `vite build` (dev serves workers as native ES
-  // modules regardless of this setting, so `npm run dev` never catches it).
-  // Setting format: 'es' tells Rollup to emit the worker itself as an ES
-  // module, which allows it to code-split its dynamic imports normally.
-  // Requires ES module Worker support, which all supported browsers for
-  // this app (recent iOS/Android/desktop) have.
+  // Vite's default 'iife' worker format cannot code-split. The PDF worker
+  // lazy-loads each generator, so it needs ES module output.
   worker: {
     format: 'es',
   },
 
   build: {
-    // ── Target ───────────────────────────────────────────────────────────────
     target: 'es2020',
-
-    // ── Chunk size warning threshold ─────────────────────────────────────────
-    // pdf-lib and pdfjs-dist are unavoidably large.
     chunkSizeWarningLimit: 1500,
 
-    // Vite 8 uses Rolldown: the Rollup-era object-form `manualChunks` was
-    // removed, and `rollupOptions` is now `rolldownOptions`. Vendor chunking
-    // is expressed with `codeSplitting.groups` instead (first match wins).
     rolldownOptions: {
       output: {
         codeSplitting: {

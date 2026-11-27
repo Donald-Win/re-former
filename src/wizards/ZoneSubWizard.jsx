@@ -1,4 +1,3 @@
-
 // 360S014EF — AS-Built Zone Substation Equipment Record
 import { useState } from 'react'
 import { Building2 } from 'lucide-react'
@@ -17,13 +16,15 @@ import { CrashRecoveryBanner } from '../shared/CrashRecoveryBanner'
 import { APP_ACCENT, WIZARD_COLORS } from '../shared/constants'
 import { createWorkerGenerator } from '../shared/pdfWorkerClient'
 
-// ── PDF generation now runs off the main thread via the shared PDF worker ────
+// ── PDF generation runs off the main thread via the shared PDF worker ────────
 const generateEfPdf = createWorkerGenerator('ZoneSubPdfGenerator', 'generateEfPdf')
 
 const ACCENT    = APP_ACCENT
 const EF_BG     = WIZARD_COLORS.bg
 const EF_MID    = WIZARD_COLORS.mid
 const EF_BORDER = WIZARD_COLORS.border
+
+const MAX_ITEMS = 11
 
 const EF_STEPS = [
   'Job Details',
@@ -43,9 +44,7 @@ const emptyRow = () => ({
   drawingRef: '',
 })
 
-// Toggle for an optional section. Defined at module level so it keeps its
-// identity between renders (a component declared inside the render function
-// remounts on every render).
+// Toggle for an optional section. Defined at module level so it keeps its identity between renders.
 function AppliesToggle({ applies, label, onToggle }) {
   return (
     <button type="button" onClick={onToggle} style={{
@@ -101,6 +100,19 @@ function ZoneSubWizard({ onClose }) {
     return { ...p, additionalItems: items }
   })
 
+  const addRow = () => setD(p =>
+    p.additionalItems.length < MAX_ITEMS
+      ? { ...p, additionalItems: [...p.additionalItems, emptyRow()] }
+      : p
+  )
+
+  const removeRow = i => setD(p => ({
+    ...p,
+    additionalItems: p.additionalItems.length > 1
+      ? p.additionalItems.filter((_, idx) => idx !== i)
+      : [emptyRow()],
+  }))
+
   const handleShare = () => {
     sharePdf(
       pdfBytes,
@@ -125,7 +137,6 @@ function ZoneSubWizard({ onClose }) {
   const renderCurrentStep = () => {
     switch (step) {
       case 0: return (
-        // 0 — Job Details
         <JobDetailsStep key="s0" d={d} setD={setD} accent={ACCENT} onOpenDrafts={openLoad}
           topChildren={<>
             <WF label="Substation" v={d.substation} set={v => set('substation', v)} accent={ACCENT} />
@@ -135,7 +146,6 @@ function ZoneSubWizard({ onClose }) {
       )
 
       case 1: return (
-        // 1 — Maintenance / Modification
         <div key="s1">
           <AppliesToggle
             applies={d.maintenanceApplies}
@@ -145,9 +155,9 @@ function ZoneSubWizard({ onClose }) {
           {d.maintenanceApplies ? (
             <>
               <SectionHead label="Equipment" accent={ACCENT} />
-              <WF label="Equipment ID"                v={d.maintenanceEquipmentId}          set={v => set('maintenanceEquipmentId', v)}          accent={ACCENT} />
+              <WF label="Equipment ID"                    v={d.maintenanceEquipmentId}          set={v => set('maintenanceEquipmentId', v)}          accent={ACCENT} />
               <WF label="Equipment ID of Parent Equipment" v={d.maintenanceParentEquipmentId} set={v => set('maintenanceParentEquipmentId', v)} accent={ACCENT} />
-              <WF label="Description of Equipment"   v={d.maintenanceEquipmentDescription}  set={v => set('maintenanceEquipmentDescription', v)} accent={ACCENT} />
+              <WF label="Description of Equipment"        v={d.maintenanceEquipmentDescription}  set={v => set('maintenanceEquipmentDescription', v)} accent={ACCENT} />
               <WTA label="Description of maintenance, modification, setting change or alteration"
                 v={d.maintenanceDescription} set={v => set('maintenanceDescription', v)} rows={6} accent={ACCENT} />
             </>
@@ -162,7 +172,6 @@ function ZoneSubWizard({ onClose }) {
       )
 
       case 2: return (
-        // 2 — New / Replacement
         <div key="s2">
           <AppliesToggle
             applies={d.replacementApplies}
@@ -172,8 +181,8 @@ function ZoneSubWizard({ onClose }) {
           {d.replacementApplies ? (
             <>
               <SectionHead label="Equipment IDs" accent={ACCENT} />
-              <WF label="New Equipment ID"             v={d.newEquipmentId}    set={v => set('newEquipmentId', v)}    accent={ACCENT} />
-              <WF label="Old Equipment ID"             v={d.oldEquipmentId}    set={v => set('oldEquipmentId', v)}    accent={ACCENT} />
+              <WF label="New Equipment ID"              v={d.newEquipmentId}    set={v => set('newEquipmentId', v)}    accent={ACCENT} />
+              <WF label="Old Equipment ID"              v={d.oldEquipmentId}    set={v => set('oldEquipmentId', v)}    accent={ACCENT} />
               <WF label="As-Built Drawing Reference No" v={d.drawingReferenceNo} set={v => set('drawingReferenceNo', v)} accent={ACCENT} />
               <SectionHead label="Make / Model" accent={ACCENT} />
               <WF label="Manufacturer" v={d.manufacturer} set={v => set('manufacturer', v)} accent={ACCENT} />
@@ -195,51 +204,41 @@ function ZoneSubWizard({ onClose }) {
       )
 
       case 3: return (
-        // 3 — Additional Equipment
         <div key="s3">
           <SectionHead label="Additional Equipment Items" sub="Use this section when more than one item was installed or removed" accent={ACCENT} />
           <div style={{ background: EF_BG, border: `1px solid ${EF_BORDER}`, borderRadius: 8, padding: '10px 12px', marginBottom: 12, fontSize: 12, color: ACCENT }}>
             Leave this section empty if all details fit on page 1.
           </div>
-          {d.additionalItems.map((row, i) => {
-            const hasData = row.installedOrRemoved || row.equipmentId || row.serialNo || row.manufacturerModel || row.description || row.drawingRef
-            const firstEmptyIdx = d.additionalItems.findIndex(r => !r.installedOrRemoved && !r.equipmentId && !r.serialNo && !r.manufacturerModel && !r.description && !r.drawingRef)
-            const isFirstEmpty = i === firstEmptyIdx
-            const isLastRow = i === d.additionalItems.length - 1
-            return (hasData || isFirstEmpty) ? (
-              <div key={i} style={{ background: '#f8f8ff', border: '1.5px solid #ddd', borderRadius: 10, padding: 11, marginBottom: 10, position: 'relative' }}>
-                <button onClick={() => setD(p => ({ ...p, additionalItems: p.additionalItems.filter((_, idx) => idx !== i) }))}
-                  style={{ position: 'absolute', top: 8, right: 8, background: 'none', border: 'none', fontSize: 18, color: '#999', cursor: 'pointer', padding: 0 }}>×</button>
-                <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 8, color: ACCENT }}>Item {i + 1}</div>
-                <WCB label="Installed or Removed" options={['Installed', 'Removed']} value={row.installedOrRemoved}
-                  onChange={v => setRow(i, 'installedOrRemoved', row.installedOrRemoved === v ? '' : v)} accent={ACCENT} />
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                  <WF label="Equipment ID"        v={row.equipmentId}       set={v => setRow(i, 'equipmentId', v)}       accent={ACCENT} />
-                  <WF label="Serial No"           v={row.serialNo}          set={v => setRow(i, 'serialNo', v)}          accent={ACCENT} />
-                  <WF label="Manufacturer/Model"  v={row.manufacturerModel} set={v => setRow(i, 'manufacturerModel', v)} accent={ACCENT} />
-                  <WF label="Drawing Ref No"      v={row.drawingRef}        set={v => setRow(i, 'drawingRef', v)}        accent={ACCENT} />
-                </div>
-                <WF label="Description of New Item" v={row.description} set={v => setRow(i, 'description', v)} accent={ACCENT} />
-                {isLastRow && d.additionalItems.length < 11 && (
-                  <button onClick={() => setD(p => ({ ...p, additionalItems: [...p.additionalItems, emptyRow()] }))}
-                    style={{ marginTop: 10, padding: '10px 16px', borderRadius: 8, border: 'none', background: ACCENT, color: '#fff', fontFamily: 'inherit', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                    + Add Another Item
-                  </button>
-                )}
+          {d.additionalItems.map((row, i) => (
+            <div key={i} style={{ background: '#f8f8ff', border: '1.5px solid #ddd', borderRadius: 10, padding: 11, marginBottom: 10, position: 'relative' }}>
+              <button onClick={() => removeRow(i)} title="Remove this item"
+                style={{ position: 'absolute', top: 8, right: 8, background: 'none', border: 'none', fontSize: 18, color: '#999', cursor: 'pointer', padding: 0 }}>×</button>
+              <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 8, color: ACCENT }}>Item {i + 1}</div>
+              <WCB label="Installed or Removed" options={['Installed', 'Removed']} value={row.installedOrRemoved}
+                onChange={v => setRow(i, 'installedOrRemoved', row.installedOrRemoved === v ? '' : v)} accent={ACCENT} />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <WF label="Equipment ID"       v={row.equipmentId}       set={v => setRow(i, 'equipmentId', v)}       accent={ACCENT} />
+                <WF label="Serial No"          v={row.serialNo}          set={v => setRow(i, 'serialNo', v)}          accent={ACCENT} />
+                <WF label="Manufacturer/Model" v={row.manufacturerModel} set={v => setRow(i, 'manufacturerModel', v)} accent={ACCENT} />
+                <WF label="Drawing Ref No"     v={row.drawingRef}        set={v => setRow(i, 'drawingRef', v)}        accent={ACCENT} />
               </div>
-            ) : null
-          })}
+              <WF label="Description of New Item" v={row.description} set={v => setRow(i, 'description', v)} accent={ACCENT} />
+            </div>
+          ))}
+          {d.additionalItems.length < MAX_ITEMS && (
+            <button onClick={addRow}
+              style={{ width: '100%', padding: '11px 16px', borderRadius: 8, border: `2px dashed ${ACCENT}`, background: EF_BG, color: ACCENT, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+              + Add Another Item ({d.additionalItems.length} / {MAX_ITEMS})
+            </button>
+          )}
         </div>
       )
 
       case 4: return (
-        // 4 — Photos
         <div key="s4">
           <PhotoAttachStep photos={photos} onChange={setPhotos} accent={ACCENT} />
         </div>
       )
-
-      case 5: return null
 
       default: return null
     }
@@ -288,4 +287,3 @@ function ZoneSubWizard({ onClose }) {
 }
 
 export default ZoneSubWizard
-

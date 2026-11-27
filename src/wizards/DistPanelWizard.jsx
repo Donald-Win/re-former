@@ -15,9 +15,9 @@ import { useDraftPicker } from '../shared/useDraftPicker'
 import { CrashRecoveryBanner } from '../shared/CrashRecoveryBanner'
 import { APP_ACCENT, WIZARD_COLORS } from '../shared/constants'
 import { createWorkerGenerator } from '../shared/pdfWorkerClient'
+import { DIST_PANEL_SAMPLE_SLOTS, DIST_PANEL_SAMPLE_WAYS } from '../shared/planSamples'
 import {
-  POSITION_COUNT, WAY_COUNT, wayLabel, allSlots, rowUsed, usedRowIndexes,
-  tapFull, tapA, tapB,
+  WAY_COUNT, wayLabel, allSlots, usedRowIndexes, tapFull, tapA, tapB,
 } from '../shared/distPanelRows'
 
 // ── PDF generation runs off the main thread via the shared PDF worker ────────
@@ -52,34 +52,10 @@ const emptyWay  = () => ({
 })
 const emptyWays = () => Array.from({ length: WAY_COUNT }, emptyWay)
 
-// DEV-only sample: odd positions full, position 4 a half, the rest a split pair.
-const DEV_SLOTS = Array.from({ length: POSITION_COUNT }, (_, k) => {
-  const n = k + 1
-  if (n % 2 === 1) return { full: true, a: false, b: false }
-  if (n === 4)     return { full: false, a: true, b: false }
-  return { full: false, a: true, b: true }
-})
-const DEV_WAYS = Array.from({ length: WAY_COUNT }, (_, i) => (
-  rowUsed(DEV_SLOTS, i)
-    ? {
-        destination: `Feeder ${i + 1}`,
-        manufacturer: 'ABB',
-        model: `Model-${i + 1}`,
-        linkFuse: i % 2 === 0 ? 'Link' : 'Fuse',
-        openClose: i % 3 === 0 ? 'Open' : 'Closed',
-        fuseSize: ['100A', '63A', '40A'][i % 3],
-        holderRating: ['100A', '63A', '40A'][i % 3],
-        cableDesc: `95mm² Cu ${i + 1}`,
-      }
-    : emptyWay()
-))
-
 // ── Visual position grid ──────────────────────────────────────────────────────
-// One 16-part grid. Each position takes two parts: the number spans both, and the
-// a and b halves take one part each. So the number is exactly as wide as a and b
-// together, and every gap is the same size.
-// Normally the number is on the top row and the halves below. When a half is
-// selected, that column's halves swap up with the number.
+// One 16-part grid. Each position takes two parts: the number spans both, and
+// the a and b halves take one part each. A selected half swaps its column's
+// halves up with the number.
 function SlotGrid({ slots, onFull, onA, onB, accent }) {
   const cellStyle = (on, fontSize) => ({
     height: 40, padding: 0, borderRadius: 8, minWidth: 0, width: '100%', boxSizing: 'border-box',
@@ -95,7 +71,7 @@ function SlotGrid({ slots, onFull, onA, onB, accent }) {
     const flipped = s.a || s.b
     const numberRow = flipped ? 2 : 1
     const halvesRow = flipped ? 1 : 2
-    const first = 2 * k + 1                       // first of this position's two parts
+    const first = 2 * k + 1
     items.push(
       <button key={`n${n}`} type="button" onClick={() => onFull(n)}
         style={{ ...cellStyle(s.full, 15), gridColumn: `${first} / span 2`, gridRow: numberRow }}>
@@ -161,8 +137,6 @@ function ToggleRow({ label, options, value, onChange, accent }) {
 }
 
 // ── One printed row (a or b) of the panel table ───────────────────────────────
-// Every field sits on one of two columns, so the cells line up within the card.
-// Destination and cable are full width.
 function WayRow({ index, row, onField, onToggle, accent }) {
   const field  = k => v => onField(index, k, v)
   const toggle = k => v => onToggle(index, k, v)
@@ -230,12 +204,11 @@ export default function DistPanelWizard({ onClose }) {
   const { pdfBytes, pdfBlobUrl, triggerGenerate, clearPdf, buildPreviewContent } =
     usePdfGenerate(generateEiPdf)
 
-  // Dev fill: the realistic fill can't set the fuse-way choices or the
-  // ownership/material options (they're arrays and choice values), so set them
-  // here so the ticks and the "Other" text get exercised.
+  // The realistic fill cannot set the choice fields (arrays and option values),
+  // so the dev fill sets them here.
   const { set, handleDevFill } = useWizardSetup(d, setD, step, FORM_KEY, {
-    slots: DEV_SLOTS,
-    ways: DEV_WAYS,
+    slots: DIST_PANEL_SAMPLE_SLOTS,
+    ways: DIST_PANEL_SAMPLE_WAYS,
     ownership: 'Powerco',
     ownershipOther: '',
     panelManufacturer: 'ABB',
@@ -248,9 +221,8 @@ export default function DistPanelWizard({ onClose }) {
     formKey: FORM_KEY, setD, setStep, setPhotos, maxStep: EI_STEPS.length - 2,
   })
 
-  // ── Grid taps ─────────────────────────────────────────────────────────────
-  // Changing a carrier only changes which rows are shown and printed. The
-  // details typed into a row are kept, so a mis-tap never deletes them.
+  // Changing a carrier only changes which rows are shown and printed. Details
+  // typed into a row are kept, so a mis-tap never deletes them.
   const applySlot = (n, fn) => setD(p => {
     const next = allSlots(p.slots)
     next[n - 1] = fn(next[n - 1])
@@ -260,13 +232,12 @@ export default function DistPanelWizard({ onClose }) {
   const onA    = n => applySlot(n, tapA)
   const onB    = n => applySlot(n, tapB)
 
-  // ── Row field helpers ─────────────────────────────────────────────────────
   const setWay = (i, field, v) => setD(p => ({
     ...p,
     ways: p.ways.map((r, idx) => (idx === i ? { ...r, [field]: v } : r)),
   }))
 
-  // Tapping the selected option again clears it, so a row can be left empty.
+  // Tapping the selected option again clears it.
   const toggleWay = (i, field, v) => setD(p => ({
     ...p,
     ways: p.ways.map((r, idx) => (idx === i ? { ...r, [field]: r[field] === v ? '' : v } : r)),
@@ -279,8 +250,7 @@ export default function DistPanelWizard({ onClose }) {
     return { ...p, fuseWays: cur.includes(v) ? cur.filter(x => x !== v) : [...cur, v] }
   })
 
-  // Photos are a hard requirement: the wizard does not move past the Photos step
-  // until at least one photo is attached.
+  // Photos are required: the wizard does not move past the Photos step without one.
   const handleNext = () => {
     if (step === PHOTO_STEP && photos.length === 0) return
     const n = step + 1
@@ -288,7 +258,6 @@ export default function DistPanelWizard({ onClose }) {
     if (n === PREVIEW_STEP) triggerGenerate(d, photos)
   }
 
-  // ── Share ─────────────────────────────────────────────────────────────────
   const handleShare = () => {
     sharePdf(
       pdfBytes,
@@ -309,9 +278,6 @@ export default function DistPanelWizard({ onClose }) {
     photos.length === 0 && 'At least one photo',
   ].filter(Boolean)
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // STEP CONTENT
-  // ─────────────────────────────────────────────────────────────────────────
   const renderCurrentStep = () => {
     if (isPreview) return null
 
@@ -416,4 +382,3 @@ export default function DistPanelWizard({ onClose }) {
     </>
   )
 }
-

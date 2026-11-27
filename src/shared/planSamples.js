@@ -1,11 +1,16 @@
 /**
- * planSamples.js — sample plans for the DEV-only 🧪 fill button. Each form's
- * sample must fit inside that form's own plan box (see planLayouts.js).
- * Dead-code eliminated in production together with devFillState.js.
+ * planSamples.js — sample data for the DEV-only 🧪 fill button.
+ *
+ * Every export is null outside development. The bundler drops the object
+ * literals in production builds, so none of this sample data ships to field
+ * devices. Each sample must fit inside its form's plan box (planLayouts.js).
  */
+import { WAY_COUNT, POSITION_COUNT, rowUsed } from './distPanelRows'
+
+const DEV = import.meta.env.DEV
 
 // 360S014EC Pole Record — box is 510.5 × 368 pt, no north arrow.
-export const POLE_SAMPLE_PLAN = {
+export const POLE_SAMPLE_PLAN = DEV ? {
   v: 1, north: 0, northSet: false,
   els: [
     { id: 's1', t: 'pt', kind: 'circle', x: 110, y: 180, w: 14, color: 'blue',  labelPos: 'top',    label: 'Old pole' },
@@ -19,12 +24,10 @@ export const POLE_SAMPLE_PLAN = {
     { id: 'd1', t: 'dim', color: 'black', orient: 'horizontal', x1: 110, y1: 180, x2: 330, y2: 180, offset: 22, label: '21.0m' },
     { id: 'd2', t: 'dim', color: 'green', orient: 'aligned',    x1: 330, y1: 180, x2: 430, y2: 120, offset: -10, label: '12.4m' },
   ],
-}
+} : null
 
-// 360S014EB Electrical Distribution Record — box is 522.5 × 238 pt. The printed
-// north circle sits in the top-left corner (about x 11–56, y 10–56 pt in the box),
-// so no sample item is placed there.
-export const EB_SAMPLE_PLAN = {
+// 360S014EB Electrical Distribution Record — box is 522.5 × 238 pt.
+export const EB_SAMPLE_PLAN = DEV ? {
   v: 1, north: 40, northSet: true,
   els: [
     { id: 's1', t: 'pt', kind: 'circle', x: 220, y: 120, w: 14, color: 'blue', labelPos: 'top', label: 'Pole 4521' },
@@ -37,12 +40,10 @@ export const EB_SAMPLE_PLAN = {
     { id: 'd1', t: 'dim', color: 'black', orient: 'horizontal', x1: 220, y1: 120, x2: 330, y2: 120, offset: 16, label: '11.0m' },
     { id: 'd2', t: 'dim', color: 'black', orient: 'vertical', x1: 330, y1: 140, x2: 330, y2: 215, offset: 18, label: '7.5m' },
   ],
-}
+} : null
 
-// 360S014EA LV Connection Record — box is 510.5 × 266.5 pt. The printed north circle
-// sits in the top-left corner (about x 9–63, y 10–64 pt in the box), so no sample
-// item is placed there.
-export const LV_SAMPLE_PLAN = {
+// 360S014EA LV Connection Record — box is 510.5 × 266.5 pt.
+export const LV_SAMPLE_PLAN = DEV ? {
   v: 1, north: 40, northSet: true,
   els: [
     { id: 's1', t: 'pt', kind: 'circle', x: 200, y: 120, w: 14, color: 'blue', labelPos: 'top', label: 'Pole 1234' },
@@ -54,4 +55,42 @@ export const LV_SAMPLE_PLAN = {
     { id: 'd1', t: 'dim', color: 'black', orient: 'horizontal', x1: 200, y1: 120, x2: 300, y2: 120, offset: 16, label: '12.0m' },
     { id: 'd2', t: 'dim', color: 'black', orient: 'vertical', x1: 300, y1: 150, x2: 300, y2: 240, offset: 18, label: '9.0m' },
   ],
-}
+} : null
+
+// 360S014EL Cable Test Report — box is 515.4 × 121 pt.
+export const CABLE_TEST_SAMPLE_PLAN = DEV ? {
+  v: 1, north: 0, northSet: false,
+  els: [
+    { id: 's1', t: 'pt', kind: 'rect', x: 80,  y: 60, w: 50, h: 30, color: 'blue', labelPos: 'center', label: 'Feeder' },
+    { id: 's2', t: 'pt', kind: 'dot',  x: 300, y: 60, color: 'red', labelPos: 'top', label: 'Joint' },
+    { id: 'l1', t: 'ln', pattern: 'dashed', color: 'black', weight: 'normal', x1: 105, y1: 60, x2: 300, y2: 60, label: '11kV cable' },
+    { id: 'd1', t: 'dim', color: 'black', orient: 'horizontal', x1: 80, y1: 60, x2: 300, y2: 60, offset: -20, label: '22.0m' },
+  ],
+} : null
+
+// 360S014EI Distribution Panel — fuse rows for the DEV fill.
+export const DIST_PANEL_SAMPLE_SLOTS = DEV
+  ? Array.from({ length: POSITION_COUNT }, (_, k) => {
+      const n = k + 1
+      if (n % 2 === 1) return { full: true, a: false, b: false }
+      if (n === 4)     return { full: false, a: true, b: false }
+      return { full: false, a: true, b: true }
+    })
+  : null
+
+export const DIST_PANEL_SAMPLE_WAYS = DEV
+  ? Array.from({ length: WAY_COUNT }, (_, i) => (
+      rowUsed(DIST_PANEL_SAMPLE_SLOTS, i)
+        ? {
+            destination: `Feeder ${i + 1}`,
+            manufacturer: 'ABB',
+            model: `Model-${i + 1}`,
+            linkFuse: i % 2 === 0 ? 'Link' : 'Fuse',
+            openClose: i % 3 === 0 ? 'Open' : 'Closed',
+            fuseSize: ['100A', '63A', '40A'][i % 3],
+            holderRating: ['100A', '63A', '40A'][i % 3],
+            cableDesc: `95mm² Cu ${i + 1}`,
+          }
+        : { destination: '', manufacturer: '', model: '', linkFuse: '', openClose: '', fuseSize: '', holderRating: '', cableDesc: '' }
+    ))
+  : null

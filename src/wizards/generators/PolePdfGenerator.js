@@ -1,29 +1,13 @@
 /**
  * PolePdfGenerator.js — PDF generator for 360S014EC (AS-Built Pole Record).
  *
- * The pole-code grid (16 options) and pole-type grid (8 options) were
- * previously matched by ARRAY INDEX against parallel reference arrays
- * (POLE_CODES / POLE_TYPES). Each option is now its own named field — same
- * outcome as every other checkbox group on this form, and each one can be
- * moved or recalibrated independently.
+ * Selection rule for equipment and accessories: an item is ticked when its key
+ * is present in the wizard state, even if no ID or text was entered. The wizard
+ * adds the key on select and removes it on deselect (see PoleWizard.jsx).
  *
- * Several "equipment on pole" / accessory fields were previously guarded
- * with `if (d.xId !== undefined && d.xId !== null)`. That guard is
- * behaviourally redundant with the draw primitives' own no-op on
- * undefined/null/'' (see pdfDrawUtils.js), so those fields are plain
- * unconditional FIELDS entries here — confirmed equivalent by the
- * comparison harness used while building this conversion.
+ * Conductor, crossarm and work-plan data use the GRIDS tables further down.
  *
- * Conductors and crossarms (up to 7 rows each) stay as small loops reading
- * from GRIDS, including their original "skip this row if every relevant
- * column is blank" guards — for crossarms that guard only checks
- * level/existing/voltage (not the other 6 columns), which IS behaviourally
- * significant, so it's preserved exactly.
- *
- * Coordinate convention
- * ─────────────────────
- * All Y values are TOP-ORIGIN (CSS / screen style). renderFields converts
- * them to pdf-lib bottom-origin internally.
+ * Coordinate convention: all Y values are TOP-ORIGIN.
  *
  * @param {object} d       - Full wizard form state
  * @param {Array}  photos  - Photo attachments
@@ -40,13 +24,10 @@ import { POLE_LAYOUT } from '../../shared/planLayouts'
 const getTemplateUrl = () =>
   `${import.meta.env.BASE_URL}forms/360S014EC.pdf`
 
-// ─────────────────────────────────────────────────────────────────────────────
-// FIELDS
-// ─────────────────────────────────────────────────────────────────────────────
-
-// ── Visibility rules. Each one matches the wizard step that shows the field, so
-// a value entered for a section that is now hidden never prints.
+// ── Visibility rules. Each matches the wizard step that shows the field, so a
+// value entered for a hidden section never prints.
 const when = (cond, fn) => d => (cond(d) ? fn(d) : '')
+const has  = (d, key)   => d[key] !== undefined && d[key] !== null
 const isNewPole      = d => d.poleActivity === 'New' || d.poleActivity === 'Replaced'
 const showNewPoleIds = d => ['New', 'Replaced', 'Label Replaced'].includes(d.poleActivity)
 const showRemoval    = d => d.poleActivity === 'Removed' || d.poleActivity === 'Replaced'
@@ -80,11 +61,11 @@ export const FIELDS = {
     manufacturedDate:   { type: 'text', align: 'center', x: 173, width: 170, y: 273, value: when(isNewPole, d => d.manufacturedDate) },
 
     // Pole activity
-    poleActivityNew:            { type: 'check', x: 143, y: 319, value: d => d.poleActivity === 'New' },
-    poleActivityRemoved:        { type: 'check', x: 218, y: 319, value: d => d.poleActivity === 'Removed' },
-    poleActivityReplaced:       { type: 'check', x: 294, y: 319, value: d => d.poleActivity === 'Replaced' },
-    poleActivityRelocation:     { type: 'check', x: 386, y: 319, value: d => d.poleActivity === 'Relocation' },
-    poleActivityLabelReplaced:  { type: 'check', x: 464, y: 319, value: d => d.poleActivity === 'Label Replaced' },
+    poleActivityNew:           { type: 'check', x: 143, y: 319, value: d => d.poleActivity === 'New' },
+    poleActivityRemoved:       { type: 'check', x: 218, y: 319, value: d => d.poleActivity === 'Removed' },
+    poleActivityReplaced:      { type: 'check', x: 294, y: 319, value: d => d.poleActivity === 'Replaced' },
+    poleActivityRelocation:    { type: 'check', x: 386, y: 319, value: d => d.poleActivity === 'Relocation' },
+    poleActivityLabelReplaced: { type: 'check', x: 464, y: 319, value: d => d.poleActivity === 'Label Replaced' },
 
     // Crossarm activity
     crossarmActivityNew:      { type: 'check', x: 143, y: 333, value: d => d.crossarmActivity === 'New' },
@@ -103,43 +84,42 @@ export const FIELDS = {
     gpsRequiredNo:  { type: 'check', x: 218, y: 362, value: when(isNewPole, d => d.gpsRequired === 'No') },
 
     // Pole condition
-    poleConditionNew:    { type: 'check', x: 143, y: 377, value: when(isNewPole, d => d.poleCondition === 'New') },
-    poleConditionPreUsed:{ type: 'check', x: 218, y: 377, value: when(isNewPole, d => d.poleCondition === 'Pre-Used') },
+    poleConditionNew:     { type: 'check', x: 143, y: 377, value: when(isNewPole, d => d.poleCondition === 'New') },
+    poleConditionPreUsed: { type: 'check', x: 218, y: 377, value: when(isNewPole, d => d.poleCondition === 'Pre-Used') },
 
     // Ownership
-    ownershipPowerco: { type: 'check', x: 143, y: 391, value: d => d.ownership === 'Powerco' },
-    ownershipPrivate: { type: 'check', x: 218, y: 391, value: d => d.ownership === 'Private' },
-    ownershipOther:   { type: 'check', x: 294, y: 391, value: d => d.ownership === 'Other' },
+    ownershipPowerco:   { type: 'check', x: 143, y: 391, value: d => d.ownership === 'Powerco' },
+    ownershipPrivate:   { type: 'check', x: 218, y: 391, value: d => d.ownership === 'Private' },
+    ownershipOther:     { type: 'check', x: 294, y: 391, value: d => d.ownership === 'Other' },
     ownershipOtherText: { type: 'text', align: 'left', x: 374, y: 392, value: d => (d.ownership === 'Other' ? d.ownershipOther : '') },
 
     // Shared use
-    sharedUseFibre:  { type: 'check', x: 143, y: 405, value: d => d.sharedUse === 'Fibre' },
-    sharedUseChorus: { type: 'check', x: 218, y: 405, value: d => d.sharedUse === 'Chorus' },
-    sharedUseOther:  { type: 'check', x: 294, y: 405, value: d => d.sharedUse === 'Other' },
+    sharedUseFibre:     { type: 'check', x: 143, y: 405, value: d => d.sharedUse === 'Fibre' },
+    sharedUseChorus:    { type: 'check', x: 218, y: 405, value: d => d.sharedUse === 'Chorus' },
+    sharedUseOther:     { type: 'check', x: 294, y: 405, value: d => d.sharedUse === 'Other' },
     sharedUseOtherText: { type: 'text', align: 'left', x: 374, y: 406, value: d => (d.sharedUse === 'Other' ? d.sharedUseOther : '') },
 
     reasonForRemoval: { type: 'text', align: 'left', x: 128, y: 420, value: when(showRemoval, d => d.reasonForRemoval) },
 
-    // Pole code grid — 16 Busck/Goldpine codes, matched by name instead of index
-    poleCodeB95:                  { type: 'check', x:  45, y: 478, value: when(isNewPole, d => d.poleCode === 'B9.5 (Busck)') },
-    poleCodeB100:                 { type: 'check', x: 173, y: 478, value: when(isNewPole, d => d.poleCode === 'B10.0 (Busck)') },
-    poleCodeB105:                 { type: 'check', x: 295, y: 478, value: when(isNewPole, d => d.poleCode === 'B10.5 (Busck)') },
-    poleCodeB110:                 { type: 'check', x: 427, y: 478, value: when(isNewPole, d => d.poleCode === 'B11.0 (Busck)') },
-    poleCodeB124:                 { type: 'check', x:  45, y: 493, value: when(isNewPole, d => d.poleCode === 'B12.4 (Busck)') },
-    poleCodeB125:                 { type: 'check', x: 173, y: 493, value: when(isNewPole, d => d.poleCode === 'B12.5 (Busck)') },
-    poleCodeB1365:                { type: 'check', x: 295, y: 493, value: when(isNewPole, d => d.poleCode === 'B13.65 (Busck)') },
-    poleCodeB1485:                { type: 'check', x: 427, y: 493, value: when(isNewPole, d => d.poleCode === 'B14.85 (Busck)') },
-    poleCodeB155:                 { type: 'check', x:  45, y: 507, value: when(isNewPole, d => d.poleCode === 'B15.5 (Busck)') },
-    poleCodeB185:                 { type: 'check', x: 173, y: 507, value: when(isNewPole, d => d.poleCode === 'B18.5 (Busck)') },
-    poleCodeGoldpine9m9kN:        { type: 'check', x: 295, y: 507, value: when(isNewPole, d => d.poleCode === '9m (9kN) Goldpine') },
-    poleCodeGoldpine10m9kN:       { type: 'check', x: 427, y: 507, value: when(isNewPole, d => d.poleCode === '10m (9kN) Goldpine') },
-    poleCodeGoldpine10m12kN:      { type: 'check', x:  45, y: 521, value: when(isNewPole, d => d.poleCode === '10m (12kN) Goldpine') },
-    poleCodeGoldpine11m9kN:       { type: 'check', x: 173, y: 521, value: when(isNewPole, d => d.poleCode === '11m (9kN) Goldpine') },
-    poleCodeGoldpine11m12kN:      { type: 'check', x: 295, y: 521, value: when(isNewPole, d => d.poleCode === '11m (12kN) Goldpine') },
-    poleCodeGoldpine12m12kN:      { type: 'check', x: 427, y: 521, value: when(isNewPole, d => d.poleCode === '12m (12kN) Goldpine') },
+    // Pole code grid
+    poleCodeB95:             { type: 'check', x:  45, y: 478, value: when(isNewPole, d => d.poleCode === 'B9.5 (Busck)') },
+    poleCodeB100:            { type: 'check', x: 173, y: 478, value: when(isNewPole, d => d.poleCode === 'B10.0 (Busck)') },
+    poleCodeB105:            { type: 'check', x: 295, y: 478, value: when(isNewPole, d => d.poleCode === 'B10.5 (Busck)') },
+    poleCodeB110:            { type: 'check', x: 427, y: 478, value: when(isNewPole, d => d.poleCode === 'B11.0 (Busck)') },
+    poleCodeB124:            { type: 'check', x:  45, y: 493, value: when(isNewPole, d => d.poleCode === 'B12.4 (Busck)') },
+    poleCodeB125:            { type: 'check', x: 173, y: 493, value: when(isNewPole, d => d.poleCode === 'B12.5 (Busck)') },
+    poleCodeB1365:           { type: 'check', x: 295, y: 493, value: when(isNewPole, d => d.poleCode === 'B13.65 (Busck)') },
+    poleCodeB1485:           { type: 'check', x: 427, y: 493, value: when(isNewPole, d => d.poleCode === 'B14.85 (Busck)') },
+    poleCodeB155:            { type: 'check', x:  45, y: 507, value: when(isNewPole, d => d.poleCode === 'B15.5 (Busck)') },
+    poleCodeB185:            { type: 'check', x: 173, y: 507, value: when(isNewPole, d => d.poleCode === 'B18.5 (Busck)') },
+    poleCodeGoldpine9m9kN:   { type: 'check', x: 295, y: 507, value: when(isNewPole, d => d.poleCode === '9m (9kN) Goldpine') },
+    poleCodeGoldpine10m9kN:  { type: 'check', x: 427, y: 507, value: when(isNewPole, d => d.poleCode === '10m (9kN) Goldpine') },
+    poleCodeGoldpine10m12kN: { type: 'check', x:  45, y: 521, value: when(isNewPole, d => d.poleCode === '10m (12kN) Goldpine') },
+    poleCodeGoldpine11m9kN:  { type: 'check', x: 173, y: 521, value: when(isNewPole, d => d.poleCode === '11m (9kN) Goldpine') },
+    poleCodeGoldpine11m12kN: { type: 'check', x: 295, y: 521, value: when(isNewPole, d => d.poleCode === '11m (12kN) Goldpine') },
+    poleCodeGoldpine12m12kN: { type: 'check', x: 427, y: 521, value: when(isNewPole, d => d.poleCode === '12m (12kN) Goldpine') },
 
-    // Custom manufacturer codes (Dulhunty / IUP / Other) — checkbox shows
-    // whenever the matching text field is populated, independent of poleCode.
+    // Custom manufacturer codes
     dulhuntyCheck:  { type: 'check', x:  45, y: 537, value: when(isDulhunty, d => !!d.dulhuntyCode) },
     dulhuntyText:   { type: 'text', align: 'left', x: 232, y: 539, value: when(isDulhunty, d => d.dulhuntyCode) },
     iupCheck:       { type: 'check', x:  45, y: 552, value: when(isIup, d => !!d.iupCode) },
@@ -147,7 +127,7 @@ export const FIELDS = {
     otherCodeCheck: { type: 'check', x:  45, y: 568, value: when(isOtherCode, d => !!d.otherCode) },
     otherCodeText:  { type: 'text', align: 'left', x: 232, y: 570, value: when(isOtherCode, d => d.otherCode) },
 
-    // Pole type grid — 8 options, matched by name instead of index
+    // Pole type grid
     poleType1:      { type: 'check', x:  45, y: 610, value: when(isNewPole, d => d.poleType === '1 Pole') },
     poleType1Half:  { type: 'check', x: 174, y: 610, value: when(isNewPole, d => d.poleType === '1 \u00BD Pole') },
     poleType2:      { type: 'check', x: 296, y: 610, value: when(isNewPole, d => d.poleType === '2 Pole') },
@@ -162,32 +142,29 @@ export const FIELDS = {
   },
 
   // ── Page 2 ─────────────────────────────────────────────────────────────────
+  // Equipment and accessory ticks use has(): ticked on selection, ID optional.
   p2: {
-    // Equipment on pole — checkbox + ID text per item. Originally guarded by
-    // `!== undefined && !== null`; that guard is redundant with the draw
-    // primitives' own no-op on falsy/undefined values, so these are plain
-    // unconditional fields (confirmed equivalent via the comparison harness).
-    absCheck:               { type: 'check', x:  45, y: 126, value: d => !!d.absId },
+    absCheck:               { type: 'check', x:  45, y: 126, value: d => has(d, 'absId') },
     absText:                { type: 'text', align: 'left', x: 175, y: 126, value: d => d.absId },
-    linksCheck:             { type: 'check', x: 296, y: 126, value: d => !!d.linksId },
+    linksCheck:             { type: 'check', x: 296, y: 126, value: d => has(d, 'linksId') },
     linksText:              { type: 'text', align: 'left', x: 433, y: 126, value: d => d.linksId },
-    dropoutFuseCheck:       { type: 'check', x:  45, y: 140, value: d => !!d.dropoutFuseId },
+    dropoutFuseCheck:       { type: 'check', x:  45, y: 140, value: d => has(d, 'dropoutFuseId') },
     dropoutFuseText:        { type: 'text', align: 'left', x: 175, y: 140, value: d => d.dropoutFuseId },
-    transformerCheck:       { type: 'check', x: 296, y: 140, value: d => !!d.transformerId },
+    transformerCheck:       { type: 'check', x: 296, y: 140, value: d => has(d, 'transformerId') },
     transformerText:        { type: 'text', align: 'left', x: 433, y: 140, value: d => d.transformerId },
-    regulatorCheck:         { type: 'check', x:  45, y: 155, value: d => !!d.regulatorId },
+    regulatorCheck:         { type: 'check', x:  45, y: 155, value: d => has(d, 'regulatorId') },
     regulatorText:          { type: 'text', align: 'left', x: 175, y: 155, value: d => d.regulatorId },
-    sectionliserCheck:      { type: 'check', x: 296, y: 155, value: d => !!d.sectionliserId },
+    sectionliserCheck:      { type: 'check', x: 296, y: 155, value: d => has(d, 'sectionliserId') },
     sectionliserText:       { type: 'text', align: 'left', x: 433, y: 155, value: d => d.sectionliserId },
-    faultIndicatorCheck:    { type: 'check', x:  45, y: 169, value: d => !!d.faultIndicatorId },
+    faultIndicatorCheck:    { type: 'check', x:  45, y: 169, value: d => has(d, 'faultIndicatorId') },
     faultIndicatorText:     { type: 'text', align: 'left', x: 175, y: 169, value: d => d.faultIndicatorId },
-    otherEquipCheck:        { type: 'check', x: 296, y: 169, value: d => !!d.otherEquipId },
+    otherEquipCheck:        { type: 'check', x: 296, y: 169, value: d => has(d, 'otherEquipType') },
     otherEquipText:         { type: 'text', align: 'left', x: 433, y: 169, value: d => d.otherEquipId },
-    lightningArresterCheck: { type: 'check', x:  45, y: 184, value: d => !!d.lightningArresterId },
+    lightningArresterCheck: { type: 'check', x:  45, y: 184, value: d => has(d, 'lightningArresterId') },
     lightningArresterText:  { type: 'text', align: 'left', x: 175, y: 184, value: d => d.lightningArresterId },
     otherEquipTypeText:     { type: 'text', align: 'left', x: 433, y: 186, value: d => d.otherEquipType },
 
-    // Accessories — array membership
+    // Accessories
     accPossumGuard:        { type: 'check', x:  45, y: 224, value: d => (d.accessories || []).includes('Possum Guard') },
     accStreetlightFitting: { type: 'check', x: 215, y: 224, value: d => (d.accessories || []).includes('Streetlight Fitting') },
     accAerialStay:         { type: 'check', x: 384, y: 224, value: d => (d.accessories || []).includes('Aerial Stay') },
@@ -197,9 +174,9 @@ export const FIELDS = {
     accHVCableRiser:       { type: 'check', x:  45, y: 253, value: d => (d.accessories || []).includes('HV Cable Riser') },
     accBirdSpikes:         { type: 'check', x:  45, y: 268, value: d => (d.accessories || []).includes('Bird Spikes') },
 
-    controlBoxCheck:       { type: 'check', x: 215, y: 253, value: d => !!d.controlBoxPurpose },
+    controlBoxCheck:       { type: 'check', x: 215, y: 253, value: d => has(d, 'controlBoxPurpose') },
     controlBoxText:        { type: 'text', align: 'left', x: 357, y: 255, value: d => d.controlBoxPurpose },
-    accessoriesOtherCheck: { type: 'check', x: 215, y: 268, value: d => !!d.accessoriesOther },
+    accessoriesOtherCheck: { type: 'check', x: 215, y: 268, value: d => has(d, 'accessoriesOther') },
     accessoriesOtherText:  { type: 'text', align: 'left', x: 295, y: 269, value: d => d.accessoriesOther },
 
     serviceConnections: { type: 'text', align: 'left', x: 194, y: 311, value: d => d.serviceConnections },
@@ -209,13 +186,10 @@ export const FIELDS = {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GRIDS — conductor and crossarm tables (page 2, up to 7 rows each), and the
-// work-description line list (page 3).
+// work-description lines (page 3).
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const GRIDS = {
-  // Each column has its own x + alignment — change `align` to 'center' or
-  // 'right' to match how that column should sit on the printed form
-  // (center alignment also needs a `width`).
   conductorRows: {
     rowY: [343, 359, 375, 391, 407, 423, 439],
     cols: {
@@ -240,11 +214,9 @@ export const GRIDS = {
       wires:         { x: 520, align: 'left' },
     },
   },
-  // Work description — the textarea's newlines map directly onto fixed
-  // ruled lines (no word-wrapping).
   workDescription: {
     x: 48,
-    maxWidth: 500,   // box runs to x≈553; leave a small margin
+    maxWidth: 500,
     rowY: [532, 547, 561, 575, 590, 604, 618, 632, 646, 661, 676, 690, 705, 719, 733],
   },
 }
@@ -266,38 +238,32 @@ export async function generatePolePdf(d, photos = []) {
   await renderFields({ pdfDoc, page: p1, draw: draw1 }, FIELDS.p1, d)
   await renderFields({ pdfDoc, page: p2, draw: draw2 }, FIELDS.p2, d)
 
-  // ── Page 2: Conductor rows (up to 7) ──────────────────────────────────────
+  // Conductor rows (up to 7); skip rows that are entirely blank.
   const cc = GRIDS.conductorRows
   ;(d.conductors || []).forEach((c, i) => {
     const y = cc.rowY[i]
     if (!y) return
-    // Only write the row if at least one field is populated.
     if (!c.level && !c.existing && !c.size && !c.material && !c.insulation) return
     renderGridRow(draw2, cc.cols, y, c)
   })
 
-  // ── Page 2: Crossarm rows (up to 7) ───────────────────────────────────────
+  // Crossarm rows (up to 7). The gate checks level/existing/voltage only, as before.
   const ca = GRIDS.crossarmRows
   ;(d.crossarms || []).forEach((c, i) => {
     const y = ca.rowY[i]
     if (!y) return
-    // Gate check only considers level/existing/voltage — matches the
-    // original exactly (other columns can be populated and still get
-    // skipped if these three are blank).
     if (!c.level && !c.existing && !c.voltage) return
     renderGridRow(draw2, ca.cols, y, c)
   })
 
-  // ── Page 3: Work description — split on newlines onto fixed ruled lines ──
+  // Work description: word-wrap each paragraph to the box; blank lines keep their gap.
   const wd = GRIDS.workDescription
-  // Word-wrap each paragraph to the box width; a blank line keeps its gap.
   const descLines = (d.workDescription || '').split('\n').flatMap(para =>
     para.trim() === '' ? [''] : draw3.wrapText(para, wd.maxWidth))
   descLines.slice(0, wd.rowY.length).forEach((line, i) => {
     draw3.t(wd.x, wd.rowY[i], line)
   })
 
-  // ── Work plan — page 3, in the "WORK PLAN AND DESCRIPTION" box ──────────
   drawPlan({ page: p3, draw: draw3, font, plan: d.plan, layout: POLE_LAYOUT, pageHeight: A4_HEIGHT })
 
   if (photos && photos.length > 0) {
@@ -306,5 +272,3 @@ export async function generatePolePdf(d, photos = []) {
 
   return new Uint8Array(await pdfDoc.save())
 }
-
-

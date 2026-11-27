@@ -6,6 +6,7 @@ import { WF, WTA, WCB, SectionHead } from '../shared/WizardInputs'
 import { PhotoAttachStep } from '../shared/PhotoAttachStep'
 import { PlanSketchStep } from '../shared/PlanSketchStep'
 import { emptyPlan } from '../shared/planModel'
+import { CABLE_TEST_SAMPLE_PLAN } from '../shared/planSamples'
 import { sharePdf, buildPdfFilename } from '../shared/sharePdf'
 import { getBaseFormState, getUserPrefs, getTestSets, saveTestSets, MAX_TEST_SETS } from '../shared/userPrefs'
 import { JobDetailsStep } from '../shared/JobDetailsStep'
@@ -48,17 +49,6 @@ const POWER_OPTIONS      = ['Mains', 'Other']
 
 const GRID2 = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 14px' }
 const GRID3 = { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0 10px' }
-
-// Sample schematic for the DEV-only 🧪 fill button. Kept inside the box.
-const DEV_PLAN = {
-  v: 1, north: 0, northSet: false,
-  els: [
-    { id: 's1', t: 'pt', kind: 'rect', x: 80,  y: 60, w: 50, h: 30, color: 'blue', labelPos: 'center', label: 'Feeder' },
-    { id: 's2', t: 'pt', kind: 'dot',  x: 300, y: 60, color: 'red', labelPos: 'top', label: 'Joint' },
-    { id: 'l1', t: 'ln', pattern: 'dashed', color: 'black', weight: 'normal', x1: 105, y1: 60, x2: 300, y2: 60, label: '11kV cable' },
-    { id: 'd1', t: 'dim', color: 'black', orient: 'horizontal', x1: 80, y1: 60, x2: 300, y2: 60, offset: -20, label: '22.0m' },
-  ],
-}
 
 const initState = () => getBaseFormState({
   siteId: '',
@@ -120,7 +110,7 @@ export default function CableTestWizard({ onClose }) {
   const { pdfBytes, pdfBlobUrl, triggerGenerate, clearPdf, buildPreviewContent } =
     usePdfGenerate(generateElPdf)
 
-  const { set, handleDevFill } = useWizardSetup(d, setD, step, FORM_KEY, { plan: DEV_PLAN })
+  const { set, handleDevFill } = useWizardSetup(d, setD, step, FORM_KEY, { plan: CABLE_TEST_SAMPLE_PLAN })
   const { clearDraft: clearFormDraft } = useDraft(FORM_KEY, d, step, photos)
   const crashRecovery = useCrashRecovery({
     formKey: FORM_KEY, setD, setStep, setPhotos, maxStep: STEPS.length - 2,
@@ -129,15 +119,13 @@ export default function CableTestWizard({ onClose }) {
   // Tapping the selected option again clears it.
   const tog = k => v => setD(p => ({ ...p, [k]: p[k] === v ? '' : v }))
 
-  // Load one of the saved test sets into the make / model / serial fields.
-  // The fields stay editable afterwards, so a set can be adjusted for one job.
+  // Load a saved test set into the make / model / serial fields. They stay editable.
   const loadTestSet = s => {
     setD(p => ({ ...p, testMake: s.make, testModel: s.model, testSerial: s.serial }))
     setEquipNote(`Loaded "${s.name}". You can still edit these fields.`)
   }
 
   // Save the typed make / model / serial as a named set in My Details.
-  // Reusing an existing name updates that set. A new name needs a free slot.
   const saveAsNamedSet = () => {
     const name = saveName.trim()
     if (!name) return
@@ -273,7 +261,6 @@ export default function CableTestWizard({ onClose }) {
               <div style={{ marginBottom: 6 }}>
                 <div style={subLabel}>Saved test sets</div>
                 {sets.map(s => {
-                  // Highlight the set whose details are currently in the fields.
                   const on = d.testMake === s.make && d.testModel === s.model && d.testSerial === s.serial
                   return (
                     <button

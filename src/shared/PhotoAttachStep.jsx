@@ -3,68 +3,22 @@
  *
  * Props:
  *   photos   – array of { dataUrl: string, name: string, normalized: boolean }
- *   onChange – setter: (updaterFn) => void  (called with prev => [...prev, newItem])
- *   accent   – optional hex colour string for branding
+ *   onChange – setter: (updaterFn) => void
+ *   accent   – hex colour for branding
  *
- * Read-order fix (v2.18.3)
- * ────────────────────────
- * Previously each selected file kicked off its own independent FileReader
- * and appended to `photos` in whichever order its `onload` fired. Since
- * FileReader read time depends on file size, a smaller/later-selected photo
- * could finish decoding before an earlier, larger one — so photos could
- * silently land in the generated PDF in a different order than the user
- * picked them in.
+ * Each photo is resized and re-encoded as a JPEG (max 1600px, 80%) before it
+ * enters wizard state, so drafts and autosaves stay small. `normalized: true`
+ * tells appendPhotosToPdf.js the photo is already correctly oriented and
+ * sized, so it can skip its own processing pass. A photo whose compression
+ * fails keeps its original data with `normalized: false`.
  *
- * Fix: read every selected file as a Promise, wait for all of them via
- * Promise.allSettled (which preserves input order regardless of resolve
- * timing), then append the whole batch to `photos` in one onChange call.
- * This also cuts N re-renders (one per file) down to 1 per batch. Any file
- * that fails to read is skipped (with a console warning) rather than
- * discarding the whole batch.
- *
- * Shift-left compression (v2.20.3)
- * ─────────────────────────────────
- * Photos used to be stored in wizard state — and therefore in every
- * autosave snapshot and every named draft written to IndexedDB — as the
- * FULL-RESOLUTION, uncompressed camera image. Compression only happened
- * later, transiently, inside appendPhotosToPdf.js at the moment a PDF was
- * actually generated, and those compressed bytes were discarded immediately
- * afterward. That meant every autosave tick and every draft save was
- * reading/writing multi-megabyte-per-photo blobs for no lasting benefit.
- *
- * readFileAsPhoto() now resizes and re-compresses each photo to the same
- * dimensions/quality PDF generation uses (1600px longest edge, JPEG 80%)
- * BEFORE it ever enters React state — so the smaller version is what's
- * held in memory, autosaved, and stored in named drafts.
- *
- * If compression fails for any reason (e.g. a tainted canvas from an
- * unusual image source), the original uncompressed image is used instead
- * so the photo is never silently dropped.
- *
- * Skip the second pass entirely when already normalized (v2.20.6)
- * ──────────────────────────────────────────────────────────────────
- * Each photo is tagged with `normalized: true/false` depending on which of
- * the two paths above it took. `normalized: true` means this photo has
- * already been drawn through a canvas — which is what bakes correct EXIF
- * orientation into the pixels, since pdf-lib's embedJpg ignores EXIF
- * rotation metadata entirely — and resized to the shared MAX px cap.
- * appendPhotosToPdf.js reads this flag and, when true, embeds the bytes
- * directly with no further decode/resize/re-encode pass at all: previously
- * EVERY photo was silently re-processed a second time at generation time
- * regardless of whether that work was still needed, which both wasted CPU
- * and compounded JPEG artifacts on an image already compressed once.
- * `normalized: false` (the rare compression-failure fallback above) tells
- * appendPhotosToPdf.js it must still run its full defensive pipeline on
- * that one photo, since it's still at full resolution and may still carry
- * an EXIF rotation tag. Any photo saved by a version of the app before this
- * flag existed simply has no `normalized` key at all, which is treated the
- * same as `false` — the safe, conservative default — so older saved drafts
- * keep working exactly as before.
+ * Photos are read one at a time, in selection order. Decoding several
+ * full-size camera images at once can exhaust memory on an iPad.
  */
 import React, { useRef, useState } from 'react'
 import { Camera, X, ImageIcon } from 'lucide-react'
 
-const MAX_ATTACH_PX      = 1600  // longest edge cap — matches appendPhotosToPdf.js
+const MAX_ATTACH_PX       = 1600  // longest edge cap — matches appendPhotosToPdf.js
 const ATTACH_JPEG_QUALITY = 0.8
 
 /** Resize `img` to fit within MAX_ATTACH_PX and re-encode as a JPEG data URL. */
@@ -92,22 +46,10 @@ function readFileAsPhoto(file) {
       const img = new Image()
       img.onload = () => {
         try {
-          // `normalized: true` is a contract with appendPhotosToPdf.js: it
-          // means this photo has ALREADY been drawn through a canvas (which
-          // is what bakes correct EXIF orientation into the pixels — pdf-lib
-          // ignores EXIF rotation metadata entirely when embedding) and
-          // resized to the shared MAX px cap. appendPhotosToPdf.js uses this
-          // flag to skip its own decode/resize/re-encode pass entirely for
-          // photos that already went through this successfully, embedding
-          // the bytes as-is instead of processing every photo twice.
           resolve({ dataUrl: compressImage(img), name: file.name, normalized: true })
         } catch (err) {
-          // Compression failed — fall back to the original, uncompressed
-          // image rather than losing the photo entirely. This raw file
-          // never went through canvas, so it can still carry an EXIF
-          // rotation tag and can still be arbitrarily large — normalized
-          // is left false so appendPhotosToPdf.js knows it must still run
-          // its own full defensive processing pass on this one photo.
+          // Compression failed: keep the original. It is not normalised, so
+          // appendPhotosToPdf.js must run its full processing on it.
           console.warn(`PhotoAttachStep: compression failed for ${file.name}, using original`, err)
           resolve({ dataUrl: rawDataUrl, name: file.name, normalized: false })
         }
@@ -122,46 +64,34 @@ function readFileAsPhoto(file) {
 
 export function PhotoAttachStep({ photos = [], onChange, accent = '#4f46e5' }) {
   const inputRef = useRef(null)
-  // How many of the most recently selected photos could not be read. Shown to
-  // the tech so a photo that didn't attach is never silently missing.
+  // How many photos from the most recent selection could not be read.
   const [failedCount, setFailedCount] = useState(0)
 
-  const handleFiles = (e) => {
+  const handleFiles = async (e) => {
     const files = Array.from(e.target.files || [])
     if (!files.length) return
-
-    // Reset immediately so the same file(s) can be re-selected later if
-    // removed — safe to do now since `files` above already captured the
-    // File objects independently of the input element.
+    // Clear the input so the same file can be picked again later.
     e.target.value = ''
 
-    Promise.allSettled(files.map(readFileAsPhoto)).then(results => {
-      const newPhotos = results
-        .filter(r => r.status === 'fulfilled')
-        .map(r => r.value)
-
-      if (newPhotos.length > 0) {
-        // Single batched append, in the same order the user selected them.
-        onChange(prev => [...prev, ...newPhotos])
+    const batch = []
+    let failed = 0
+    for (const file of files) {
+      try {
+        batch.push(await readFileAsPhoto(file))
+      } catch (err) {
+        failed += 1
+        console.warn('PhotoAttachStep: could not read photo', err)
       }
-
-      const failed = results.filter(r => r.status === 'rejected')
-      setFailedCount(failed.length)
-      if (failed.length > 0) {
-        console.warn(
-          `PhotoAttachStep: ${failed.length} photo(s) failed to load`,
-          failed.map(f => f.reason),
-        )
-      }
-    })
+    }
+    if (batch.length > 0) onChange(prev => [...prev, ...batch])
+    setFailedCount(failed)
   }
 
   const removePhoto = (idx) => {
     onChange(prev => prev.filter((_, i) => i !== idx))
   }
 
-  // Swap a photo with its neighbour. Photos are appended to the PDF in this
-  // exact order (one per page), so the order shown here IS the page order.
+  // Photos are appended to the PDF in this order (one per page).
   const movePhoto = (idx, dir) => {
     onChange(prev => {
       const target = idx + dir
@@ -197,7 +127,6 @@ export function PhotoAttachStep({ photos = [], onChange, accent = '#4f46e5' }) {
         </div>
       )}
 
-      {/* Hidden file input — accepts any image, allows multiples, prefers camera on iOS */}
       <input
         ref={inputRef}
         type="file"
@@ -232,11 +161,7 @@ export function PhotoAttachStep({ photos = [], onChange, accent = '#4f46e5' }) {
       </button>
 
       {photos.length === 0 ? (
-        <div style={{
-          textAlign: 'center',
-          padding: '40px 0',
-          color: '#d1d5db',
-        }}>
+        <div style={{ textAlign: 'center', padding: '40px 0', color: '#d1d5db' }}>
           <ImageIcon size={44} style={{ margin: '0 auto 10px', display: 'block', opacity: 0.5 }} />
           <div style={{ fontSize: 13 }}>No photos attached — tap above to add photos from your camera roll or take a new photo.</div>
         </div>
@@ -257,36 +182,19 @@ export function PhotoAttachStep({ photos = [], onChange, accent = '#4f46e5' }) {
                 <img
                   src={photo.dataUrl}
                   alt={photo.name || `Photo ${idx + 1}`}
-                  style={{
-                    width: '100%',
-                    aspectRatio: '4/3',
-                    objectFit: 'cover',
-                    display: 'block',
-                  }}
+                  style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', display: 'block' }}
                 />
-                {/* Remove button */}
                 <button
                   onClick={() => removePhoto(idx)}
                   style={{
-                    position: 'absolute',
-                    top: 5,
-                    right: 5,
-                    background: 'rgba(0,0,0,0.65)',
-                    border: 'none',
-                    borderRadius: '50%',
-                    width: 26,
-                    height: 26,
-                    cursor: 'pointer',
-                    padding: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#fff',
+                    position: 'absolute', top: 5, right: 5,
+                    background: 'rgba(0,0,0,0.65)', border: 'none', borderRadius: '50%',
+                    width: 26, height: 26, cursor: 'pointer', padding: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff',
                   }}
                 >
                   <X size={14} />
                 </button>
-                {/* Page order badge + move earlier / later */}
                 <div style={{
                   position: 'absolute', top: 5, left: 5,
                   display: 'flex', alignItems: 'center', gap: 4,
@@ -300,19 +208,11 @@ export function PhotoAttachStep({ photos = [], onChange, accent = '#4f46e5' }) {
                   <button onClick={() => movePhoto(idx, 1)} disabled={idx === photos.length - 1}
                     aria-label="Move later" style={arrowBtn(idx === photos.length - 1)}>›</button>
                 </div>
-                {/* Filename label */}
                 <div style={{
-                  position: 'absolute',
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
+                  position: 'absolute', bottom: 0, left: 0, right: 0,
                   background: 'linear-gradient(transparent, rgba(0,0,0,0.6))',
-                  color: '#fff',
-                  fontSize: 10,
-                  padding: '8px 6px 4px',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
+                  color: '#fff', fontSize: 10, padding: '8px 6px 4px',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                 }}>
                   📷 {photo.name || `Photo ${idx + 1}`}
                 </div>
@@ -321,15 +221,9 @@ export function PhotoAttachStep({ photos = [], onChange, accent = '#4f46e5' }) {
           </div>
 
           <div style={{
-            marginTop: 14,
-            padding: '10px 14px',
-            background: accent + '12',
-            border: `1px solid ${accent}40`,
-            borderRadius: 8,
-            fontSize: 13,
-            color: accent,
-            fontWeight: 600,
-            textAlign: 'center',
+            marginTop: 14, padding: '10px 14px',
+            background: accent + '12', border: `1px solid ${accent}40`, borderRadius: 8,
+            fontSize: 13, color: accent, fontWeight: 600, textAlign: 'center',
           }}>
             {photos.length} photo{photos.length !== 1 ? 's' : ''} will be appended to the PDF, in the order shown
           </div>
@@ -338,5 +232,3 @@ export function PhotoAttachStep({ photos = [], onChange, accent = '#4f46e5' }) {
     </div>
   )
 }
-
-
